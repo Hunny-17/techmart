@@ -39,6 +39,21 @@ $env = static function (string $key, string $default = ''): string {
     return (string)$value;
 };
 
+$paymentBankId = $env('PAYMENT_BANK_ID', 'MB');
+if (strcasecmp($paymentBankId, 'MB Bank') === 0) {
+    $paymentBankId = 'MB';
+}
+
+$paymentBankName = $env('PAYMENT_BANK_NAME', 'MB Bank');
+if (strcasecmp($paymentBankName, 'TechMart Demo Bank') === 0) {
+    $paymentBankName = 'MB Bank';
+}
+
+$paymentBankAccountName = $env('PAYMENT_BANK_ACCOUNT_NAME', 'TRAN QUOC HUY');
+if (strcasecmp($paymentBankAccountName, 'TECHMART DEMO') === 0) {
+    $paymentBankAccountName = 'TRAN QUOC HUY';
+}
+
 return [
     'app' => [
         'name'  => $_ENV['APP_NAME']  ?? 'TechMart',
@@ -71,10 +86,10 @@ return [
         'log_path' => dirname(__DIR__) . '/storage/mail',
     ],
     'payment' => [
-        'bank_name' => $env('PAYMENT_BANK_NAME', 'MB Bank'),
-        'bank_id' => $env('PAYMENT_BANK_ID', 'MB'),
+        'bank_name' => $paymentBankName,
+        'bank_id' => $paymentBankId,
         'bank_account_no' => $env('PAYMENT_BANK_ACCOUNT_NO', '100612200517'),
-        'bank_account_name' => $env('PAYMENT_BANK_ACCOUNT_NAME', 'TRAN QUOC HUY'),
+        'bank_account_name' => $paymentBankAccountName,
         'bank_branch' => $env('PAYMENT_BANK_BRANCH', ''),
         'wallet_name' => $env('PAYMENT_WALLET_NAME', 'TechMart Pay'),
         'wallet_account' => $env('PAYMENT_WALLET_ACCOUNT', 'TECHMARTPAY'),
