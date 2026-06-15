@@ -30,6 +30,15 @@ if (file_exists($envFile)) {
     }
 }
 
+$env = static function (string $key, string $default = ''): string {
+    $value = $_ENV[$key] ?? getenv($key);
+    if ($value === false || trim((string)$value) === '') {
+        return $default;
+    }
+
+    return (string)$value;
+};
+
 return [
     'app' => [
         'name'  => $_ENV['APP_NAME']  ?? 'TechMart',
@@ -62,14 +71,14 @@ return [
         'log_path' => dirname(__DIR__) . '/storage/mail',
     ],
     'payment' => [
-        'bank_name' => $_ENV['PAYMENT_BANK_NAME'] ?? 'MB Bank',
-        'bank_id' => $_ENV['PAYMENT_BANK_ID'] ?? 'MB',
-        'bank_account_no' => $_ENV['PAYMENT_BANK_ACCOUNT_NO'] ?? '100612200517',
-        'bank_account_name' => $_ENV['PAYMENT_BANK_ACCOUNT_NAME'] ?? 'TRAN QUOC HUY',
-        'bank_branch' => $_ENV['PAYMENT_BANK_BRANCH'] ?? '',
-        'wallet_name' => $_ENV['PAYMENT_WALLET_NAME'] ?? 'TechMart Pay',
-        'wallet_account' => $_ENV['PAYMENT_WALLET_ACCOUNT'] ?? 'TECHMARTPAY',
-        'wallet_qr_url' => $_ENV['PAYMENT_WALLET_QR_URL'] ?? '',
+        'bank_name' => $env('PAYMENT_BANK_NAME', 'MB Bank'),
+        'bank_id' => $env('PAYMENT_BANK_ID', 'MB'),
+        'bank_account_no' => $env('PAYMENT_BANK_ACCOUNT_NO', '100612200517'),
+        'bank_account_name' => $env('PAYMENT_BANK_ACCOUNT_NAME', 'TRAN QUOC HUY'),
+        'bank_branch' => $env('PAYMENT_BANK_BRANCH', ''),
+        'wallet_name' => $env('PAYMENT_WALLET_NAME', 'TechMart Pay'),
+        'wallet_account' => $env('PAYMENT_WALLET_ACCOUNT', 'TECHMARTPAY'),
+        'wallet_qr_url' => $env('PAYMENT_WALLET_QR_URL', ''),
     ],
     'upload' => [
         'max_size'   => (int)($_ENV['UPLOAD_MAX_SIZE'] ?? 2_097_152),
