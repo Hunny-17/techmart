@@ -981,16 +981,26 @@ aside.bg-white {
 }
 
 .home-product-meta {
-    align-items: center;
+    align-items: flex-start;
     display: flex;
     gap: 0.5rem;
     justify-content: space-between;
+    flex-wrap: wrap;
 }
 
 .home-product-price {
     color: #EF4444;
+    flex: 1 1 7rem;
     font-size: 1.05rem;
     font-weight: 800;
+    min-width: 0;
+}
+
+.home-product-meta .badge {
+    flex: 0 1 auto;
+    max-width: 100%;
+    text-align: center;
+    white-space: normal;
 }
 
 /* Shared hero base — layout only; per-page classes add background */
