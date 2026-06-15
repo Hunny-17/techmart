@@ -621,6 +621,69 @@ aside.bg-white {
     box-shadow: 0 0 0 0.18rem rgba(15, 23, 42, 0.08);
 }
 
+.checkout-payment-guide {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: var(--tm-radius);
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 1rem;
+}
+
+.checkout-payment-guide h3 {
+    font-size: 1rem;
+    font-weight: 800;
+    margin: 0.15rem 0 0.35rem;
+}
+
+.checkout-payment-guide p {
+    color: var(--tm-muted);
+    margin: 0;
+}
+
+.checkout-payment-guide-details {
+    display: grid;
+    gap: 0.65rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 0.85rem;
+}
+
+.checkout-payment-guide-details div {
+    background: #f8fafc;
+    border: 1px solid var(--tm-border);
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+}
+
+.checkout-payment-guide-details span {
+    color: var(--tm-muted);
+    display: block;
+    font-size: 0.78rem;
+    margin-bottom: 0.2rem;
+}
+
+.checkout-payment-guide-details strong {
+    display: block;
+    font-size: 0.95rem;
+    overflow-wrap: anywhere;
+}
+
+.checkout-payment-guide-qr {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 0.65rem;
+}
+
+.checkout-payment-guide-qr img {
+    display: block;
+    height: auto;
+    max-width: 180px;
+    width: 100%;
+}
+
 .my-orders-table td,
 .my-orders-table th,
 .my-order-detail-table td,
@@ -2295,6 +2358,18 @@ td.text-muted,
 
     .catalog-product-card .home-product-media {
         min-height: 140px;
+    }
+
+    .checkout-payment-guide {
+        grid-template-columns: 1fr;
+    }
+
+    .checkout-payment-guide-details {
+        grid-template-columns: 1fr;
+    }
+
+    .checkout-payment-guide-qr {
+        justify-self: center;
     }
 
     .wishlist-card-actions {

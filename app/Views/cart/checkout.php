@@ -72,6 +72,10 @@ $paymentLabels = [
                       data-payment-reference="<?= e($paymentReferenceCode) ?>"
                       data-order-total="<?= e(format_vnd($total)) ?>"
                       data-order-total-raw="<?= e((int)round((float)$total)) ?>"
+                      data-current-total-raw="<?= e((int)round((float)$total)) ?>"
+                      data-bank-id="<?= e((string)($paymentConfig['bank_id'] ?? '')) ?>"
+                      data-bank-account-no="<?= e((string)($paymentConfig['bank_account_no'] ?? '')) ?>"
+                      data-bank-account-name="<?= e((string)($paymentConfig['bank_account_name'] ?? '')) ?>"
                       data-payment-options="<?= e(json_encode($paymentOptions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>">
                     <?= csrf_field() ?>
 
@@ -132,6 +136,31 @@ $paymentLabels = [
                         <?php if (errors('payment_method')): ?>
                             <div class="text-danger small mt-1"><?= e(errors('payment_method')) ?></div>
                         <?php endif; ?>
+                    </div>
+
+                    <div id="checkoutPaymentGuide" class="checkout-payment-guide d-none mb-3">
+                        <div class="checkout-payment-guide-copy">
+                            <div class="small text-muted">Quét mã để thanh toán</div>
+                            <h3 id="checkoutPaymentGuideTitle">Thông tin thanh toán</h3>
+                            <p id="checkoutPaymentGuideInstruction"></p>
+                            <div class="checkout-payment-guide-details">
+                                <div>
+                                    <span>Mã thanh toán</span>
+                                    <strong data-payment-code></strong>
+                                </div>
+                                <div>
+                                    <span>Số tiền</span>
+                                    <strong class="text-danger" data-payment-total></strong>
+                                </div>
+                            </div>
+                            <div class="small text-muted mt-2" id="checkoutPaymentGuideReceiver"></div>
+                            <button class="btn btn-sm btn-outline-primary mt-3 copy-payment-code" type="button">
+                                <i class="bi bi-clipboard me-1"></i> Copy mã
+                            </button>
+                        </div>
+                        <div class="checkout-payment-guide-qr" id="checkoutPaymentGuideQrWrap">
+                            <img id="checkoutPaymentGuideQrImage" src="" alt="QR thanh toán">
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -242,7 +271,7 @@ $paymentLabels = [
                         <div class="small text-muted">Mã thanh toán</div>
                         <div class="d-flex align-items-center justify-content-between gap-2">
                             <code class="fs-5 fw-bold" data-payment-code></code>
-                            <button class="btn btn-sm btn-outline-primary" type="button" id="copyPaymentCode">
+                            <button class="btn btn-sm btn-outline-primary copy-payment-code" type="button">
                                 <i class="bi bi-clipboard me-1"></i> Copy
                             </button>
                         </div>
@@ -267,28 +296,35 @@ $paymentLabels = [
 </div>
 
 <script nonce="<?= csp_nonce() ?>">
-const checkoutForm = document.getElementById('checkout-form');
-const paymentModal = new bootstrap.Modal(document.getElementById('paymentConfirmModal'));
-const codPanel = document.getElementById('paymentCodPanel');
-const codePanel = document.getElementById('paymentCodePanel');
-const modalTitle = document.getElementById('paymentModalTitle');
-const instruction = document.getElementById('paymentInstruction');
-const receiver = document.getElementById('paymentReceiver');
-const qrWrap = document.getElementById('paymentQrWrap');
-const qrImage = document.getElementById('paymentQrImage');
-const confirmButton = document.getElementById('confirmCheckoutSubmit');
-const copyButton = document.getElementById('copyPaymentCode');
+var checkoutForm = document.getElementById('checkout-form');
+var paymentModalElement = document.getElementById('paymentConfirmModal');
+var paymentModal = window.bootstrap?.Modal ? new bootstrap.Modal(paymentModalElement) : null;
+var codPanel = document.getElementById('paymentCodPanel');
+var codePanel = document.getElementById('paymentCodePanel');
+var modalTitle = document.getElementById('paymentModalTitle');
+var instruction = document.getElementById('paymentInstruction');
+var receiver = document.getElementById('paymentReceiver');
+var qrWrap = document.getElementById('paymentQrWrap');
+var qrImage = document.getElementById('paymentQrImage');
+var confirmButton = document.getElementById('confirmCheckoutSubmit');
+var guide = document.getElementById('checkoutPaymentGuide');
+var guideTitle = document.getElementById('checkoutPaymentGuideTitle');
+var guideInstruction = document.getElementById('checkoutPaymentGuideInstruction');
+var guideReceiver = document.getElementById('checkoutPaymentGuideReceiver');
+var guideQrWrap = document.getElementById('checkoutPaymentGuideQrWrap');
+var guideQrImage = document.getElementById('checkoutPaymentGuideQrImage');
+var copyButton = { addEventListener: () => {} };
 let allowSubmit = false;
-const paymentContentFromConfig = JSON.parse(checkoutForm.dataset.paymentOptions || '{}');
+var paymentContentFromConfig = JSON.parse(checkoutForm.dataset.paymentOptions || '{}');
 
-const paymentContent = {
+var paymentContent = {
     cod: {
         title: 'Xác nhận đặt hàng COD',
     },
     bank_transfer: {
         title: 'Thông tin chuyển khoản',
         instruction: 'Vui lòng chuyển khoản đúng số tiền và ghi mã thanh toán trong nội dung chuyển khoản.',
-        receiver: 'Người nhận: TechMart Demo Bank · STK: 9704 0000 1234 5678',
+        receiver: 'Người nhận: MB Bank · STK: 100612200517 · Chủ TK: TRAN QUOC HUY',
     },
     e_wallet: {
         title: 'Thông tin thanh toán ví điện tử',
@@ -297,15 +333,103 @@ const paymentContent = {
     },
 };
 
+function buildBankQrUrl() {
+    const bankId = checkoutForm.dataset.bankId || '';
+    const accountNo = checkoutForm.dataset.bankAccountNo || '';
+    const accountName = checkoutForm.dataset.bankAccountName || '';
+    const amount = Number(String(checkoutForm.dataset.orderTotal || '').replace(/[^\d]/g, '') || checkoutForm.dataset.orderTotalRaw || 0);
+    const code = checkoutForm.dataset.paymentReference || '';
+
+    if (!bankId || !accountNo || amount <= 0) {
+        return '';
+    }
+
+    const path = encodeURIComponent(bankId) + '-' + encodeURIComponent(accountNo) + '-compact2.png';
+    const params = new URLSearchParams({
+        amount: String(Math.round(amount)),
+        addInfo: code,
+        accountName,
+    });
+
+    return 'https://img.vietqr.io/image/' + path + '?' + params.toString();
+}
+
+function selectedPaymentMethod() {
+    return checkoutForm.querySelector('input[name="payment_method"]:checked')?.value || 'cod';
+}
+
+function paymentContentFor(method) {
+    const defaults = paymentContent || {};
+    const configured = paymentContentFromConfig || {};
+    const content = { ...(defaults[method] || defaults.cod || {}), ...(configured[method] || {}) };
+    if (method === 'bank_transfer') {
+        content.qr_url = buildBankQrUrl() || content.qr_url || '';
+    }
+    return content;
+}
+
+function setPaymentBlocks(method, content) {
+    if (!codPanel || !codePanel || !guide) {
+        return;
+    }
+
+    const total = checkoutForm.dataset.orderTotal;
+    const code = checkoutForm.dataset.paymentReference;
+
+    document.querySelectorAll('[data-payment-total]').forEach(el => {
+        el.textContent = total;
+    });
+    document.querySelectorAll('[data-payment-code]').forEach(el => {
+        el.textContent = code;
+    });
+
+    if (method === 'cod') {
+        guide.classList.add('d-none');
+        codPanel.classList.remove('d-none');
+        codePanel.classList.add('d-none');
+        return;
+    }
+
+    codPanel.classList.add('d-none');
+    codePanel.classList.remove('d-none');
+    instruction.textContent = content.instruction || '';
+    receiver.textContent = content.receiver || '';
+
+    guide.classList.remove('d-none');
+    guideTitle.textContent = content.title || 'Thông tin thanh toán';
+    guideInstruction.textContent = content.instruction || '';
+    guideReceiver.textContent = content.receiver || '';
+
+    if (content.qr_url) {
+        qrImage.src = content.qr_url;
+        guideQrImage.src = content.qr_url;
+        qrWrap.classList.remove('d-none');
+        guideQrWrap.classList.remove('d-none');
+    } else {
+        qrImage.removeAttribute('src');
+        guideQrImage.removeAttribute('src');
+        qrWrap.classList.add('d-none');
+        guideQrWrap.classList.add('d-none');
+    }
+}
+
+function refreshPaymentGuide() {
+    const method = selectedPaymentMethod();
+    setPaymentBlocks(method, paymentContentFor(method));
+}
+
 document.querySelectorAll('input[name="payment_method"]').forEach(input => {
     input.addEventListener('change', () => {
         document.querySelectorAll('.checkout-payment-option').forEach(option => option.classList.remove('is-selected'));
         input.closest('.checkout-payment-option')?.classList.add('is-selected');
+        refreshPaymentGuide();
     });
     if (input.checked) {
         input.closest('.checkout-payment-option')?.classList.add('is-selected');
     }
 });
+
+refreshPaymentGuide();
 
 checkoutForm.addEventListener('submit', event => {
     if (allowSubmit) {
@@ -317,35 +441,21 @@ checkoutForm.addEventListener('submit', event => {
         return;
     }
 
-    const method = checkoutForm.querySelector('input[name="payment_method"]:checked')?.value || 'cod';
-    const content = paymentContentFromConfig[method] || paymentContent[method] || paymentContent.cod;
-    const total = checkoutForm.dataset.orderTotal;
-    const code = checkoutForm.dataset.paymentReference;
+    const method = selectedPaymentMethod();
+    const content = paymentContentFor(method);
 
     modalTitle.textContent = content.title;
-    document.querySelectorAll('[data-payment-total]').forEach(el => {
-        el.textContent = total;
-    });
+    setPaymentBlocks(method, content);
 
-    if (method === 'cod') {
-        codPanel.classList.remove('d-none');
-        codePanel.classList.add('d-none');
-    } else {
-        codPanel.classList.add('d-none');
-        codePanel.classList.remove('d-none');
-        instruction.textContent = content.instruction;
-        receiver.textContent = content.receiver;
-        document.querySelector('[data-payment-code]').textContent = code;
-        if (content.qr_url) {
-            qrImage.src = content.qr_url;
-            qrWrap.classList.remove('d-none');
-        } else {
-            qrImage.removeAttribute('src');
-            qrWrap.classList.add('d-none');
-        }
+    if (paymentModal) {
+        paymentModal.show();
+        return;
     }
 
-    paymentModal.show();
+    if (window.confirm('Xác nhận đặt hàng?')) {
+        allowSubmit = true;
+        checkoutForm.submit();
+    }
 });
 
 confirmButton.addEventListener('click', () => {
@@ -366,6 +476,24 @@ copyButton.addEventListener('click', async () => {
     }
 });
 
+document.addEventListener('click', async event => {
+    const button = event.target.closest('.copy-payment-code');
+    if (!button) {
+        return;
+    }
+
+    const code = checkoutForm.dataset.paymentReference;
+    try {
+        await navigator.clipboard.writeText(code);
+        button.innerHTML = '<i class="bi bi-check2 me-1"></i> Đã copy';
+        setTimeout(() => {
+            button.innerHTML = '<i class="bi bi-clipboard me-1"></i> Copy';
+        }, 1500);
+    } catch (error) {
+        window.prompt('Copy mã thanh toán:', code);
+    }
+});
+
 // Voucher AJAX
 const voucherInput     = document.getElementById('voucher-input');
 const voucherApplyBtn  = document.getElementById('voucher-apply-btn');
@@ -375,7 +503,13 @@ const discountRow      = document.getElementById('discount-row');
 const discountCell     = document.getElementById('discount-amount-cell');
 const totalCell        = document.getElementById('checkout-total-cell');
 
-function applyVoucherState(discountFmt, newTotalFmt) {
+new MutationObserver(refreshPaymentGuide).observe(totalCell, {
+    childList: true,
+    characterData: true,
+    subtree: true,
+});
+
+function applyVoucherState(discountFmt, newTotalFmt, newTotalRaw) {
     discountRow.style.display = '';
     discountCell.textContent  = '-' + discountFmt;
     totalCell.textContent     = newTotalFmt;
@@ -438,4 +572,6 @@ voucherInput.addEventListener('input', () => {
         voucherFeedback.innerHTML = '';
     }
 });
+
+window.__checkoutPaymentReady = true;
 </script>
