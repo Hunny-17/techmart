@@ -1,0 +1,6 @@
+# Chặn thực thi PHP và script trong thư mục upload
+<FilesMatch "\.(php|php5|phtml|phar)$">
+    Require all denied
+</FilesMatch>
+Options -ExecCGI
+AddType text/plain .php .php5 .phtml .phar

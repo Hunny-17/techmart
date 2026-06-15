@@ -1,0 +1,441 @@
+<?php
+/**
+ * @var array  $items
+ * @var int    $total
+ * @var array  $user
+ * @var string $paymentReferenceCode
+ */
+$paymentOld = old('payment_method', 'cod');
+$paymentReferenceCode = $paymentReferenceCode ?? '';
+$paymentConfig = \App\Core\App::$config['payment'] ?? [];
+$paymentAmount = (int)round((float)$total);
+$bankQrUrl = '';
+if (!empty($paymentConfig['bank_id']) && !empty($paymentConfig['bank_account_no'])) {
+    $bankQrUrl = sprintf(
+        'https://img.vietqr.io/image/%s-%s-compact2.png?amount=%d&addInfo=%s&accountName=%s',
+        rawurlencode((string)$paymentConfig['bank_id']),
+        rawurlencode((string)$paymentConfig['bank_account_no']),
+        $paymentAmount,
+        rawurlencode((string)$paymentReferenceCode),
+        rawurlencode((string)$paymentConfig['bank_account_name'])
+    );
+}
+$paymentOptions = [
+    'cod' => [
+        'title' => 'Xác nhận đặt hàng COD',
+    ],
+    'bank_transfer' => [
+        'title' => 'Thông tin chuyển khoản',
+        'instruction' => 'Vui lòng chuyển khoản đúng số tiền và ghi mã thanh toán trong nội dung chuyển khoản.',
+        'receiver' => trim(($paymentConfig['bank_name'] ?? '') . ' · STK: ' . ($paymentConfig['bank_account_no'] ?? '') . ' · Chủ TK: ' . ($paymentConfig['bank_account_name'] ?? '')),
+        'qr_url' => $bankQrUrl,
+    ],
+    'e_wallet' => [
+        'title' => 'Thông tin thanh toán ví điện tử',
+        'instruction' => 'Vui lòng dùng mã thanh toán để chuyển qua ví điện tử và giúp shop đối chiếu nhanh hơn.',
+        'receiver' => trim(($paymentConfig['wallet_name'] ?? '') . ' · Tài khoản ví: ' . ($paymentConfig['wallet_account'] ?? '')),
+        'qr_url' => (string)($paymentConfig['wallet_qr_url'] ?? ''),
+    ],
+];
+$paymentLabels = [
+    'cod' => 'Thanh toán khi nhận hàng',
+    'bank_transfer' => 'Chuyển khoản ngân hàng',
+    'e_wallet' => 'Ví điện tử',
+];
+?>
+
+<section class="page-hero checkout-hero mb-4">
+    <div>
+        <span class="store-eyebrow">Đặt hàng</span>
+        <h1>Xác nhận đơn hàng</h1>
+        <p>Kiểm tra thông tin giao hàng và chọn phương thức thanh toán phù hợp.</p>
+    </div>
+    <div class="checkout-hero-actions">
+        <a href="<?= url('/cart') ?>" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Quay lại giỏ hàng
+        </a>
+    </div>
+</section>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <section class="panel-card">
+            <div class="panel-header">
+                <div>
+                    <h2>Thông tin giao hàng</h2>
+                    <p>Điền địa chỉ, số điện thoại và chọn phương thức thanh toán.</p>
+                </div>
+                <i class="bi bi-truck"></i>
+            </div>
+            <div class="p-4">
+                <form id="checkout-form" action="<?= url('/checkout') ?>" method="post"
+                      data-payment-reference="<?= e($paymentReferenceCode) ?>"
+                      data-order-total="<?= e(format_vnd($total)) ?>"
+                      data-order-total-raw="<?= e((int)round((float)$total)) ?>"
+                      data-payment-options="<?= e(json_encode($paymentOptions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>">
+                    <?= csrf_field() ?>
+
+                    <div class="mb-3">
+                        <label for="shipping_address" class="form-label">Địa chỉ giao hàng</label>
+                        <textarea id="shipping_address" name="shipping_address" rows="4"
+                                  class="form-control" required><?= old('shipping_address', $user['address'] ?? '') ?></textarea>
+                        <?php if (errors('shipping_address')): ?>
+                            <div class="text-danger small mt-1"><?= e(errors('shipping_address')) ?></div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Số điện thoại</label>
+                        <input id="phone" name="phone" class="form-control"
+                               value="<?= old('phone', $user['phone'] ?? '') ?>" required>
+                        <?php if (errors('phone')): ?>
+                            <div class="text-danger small mt-1"><?= e(errors('phone')) ?></div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label d-block">Phương thức thanh toán</label>
+                        <div class="row g-2">
+                            <div class="col-md-12">
+                                <label class="checkout-payment-option d-flex gap-3 p-3 h-100" for="payment_cod">
+                                    <input class="form-check-input mt-1" type="radio" name="payment_method"
+                                           id="payment_cod" value="cod" <?= $paymentOld === 'cod' ? 'checked' : '' ?>>
+                                    <span>
+                                        <span class="d-block fw-semibold"><i class="bi bi-cash-coin me-1"></i> COD</span>
+                                        <span class="small text-muted">Thanh toán trực tiếp cho shipper khi nhận hàng.</span>
+                                    </span>
+                                </label>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="checkout-payment-option d-flex gap-3 p-3 h-100" for="payment_bank">
+                                    <input class="form-check-input mt-1" type="radio" name="payment_method"
+                                           id="payment_bank" value="bank_transfer" <?= $paymentOld === 'bank_transfer' ? 'checked' : '' ?>>
+                                    <span>
+                                        <span class="d-block fw-semibold"><i class="bi bi-bank me-1"></i> Chuyển khoản</span>
+                                        <span class="small text-muted">Nhận mã thanh toán và chuyển khoản theo nội dung đó.</span>
+                                    </span>
+                                </label>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="checkout-payment-option d-flex gap-3 p-3 h-100" for="payment_wallet">
+                                    <input class="form-check-input mt-1" type="radio" name="payment_method"
+                                           id="payment_wallet" value="e_wallet" <?= $paymentOld === 'e_wallet' ? 'checked' : '' ?>>
+                                    <span>
+                                        <span class="d-block fw-semibold"><i class="bi bi-wallet2 me-1"></i> Ví điện tử</span>
+                                        <span class="small text-muted">Dùng mã thanh toán để đối chiếu khi chuyển qua ví.</span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                        <?php if (errors('payment_method')): ?>
+                            <div class="text-danger small mt-1"><?= e(errors('payment_method')) ?></div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Mã giảm giá</label>
+                        <div class="input-group">
+                            <input type="text" id="voucher-input" class="form-control text-uppercase"
+                                   placeholder="Nhập mã giảm giá..."
+                                   autocomplete="off" maxlength="50">
+                            <button type="button" id="voucher-apply-btn" class="btn btn-outline-secondary">
+                                Áp dụng
+                            </button>
+                        </div>
+                        <div id="voucher-feedback" class="mt-1 small"></div>
+                        <input type="hidden" name="voucher_code" id="voucher-code-hidden">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="note" class="form-label">Ghi chú</label>
+                        <textarea id="note" name="note" rows="3" class="form-control"
+                                  placeholder="Ví dụ: giao giờ hành chính, gọi trước khi giao..."><?= old('note') ?></textarea>
+                    </div>
+
+                    <div class="checkout-form-actions">
+                        <a href="<?= url('/cart') ?>" class="btn btn-outline-secondary">Hủy</a>
+                        <button class="btn btn-success btn-lg" type="submit">
+                            Tiếp tục thanh toán <i class="bi bi-arrow-right-circle ms-1"></i>
+                        </button>
+                    </div>
+                </form>
+                <?php clearFormState(); ?>
+            </div>
+        </section>
+    </div>
+
+    <div class="col-lg-5">
+        <section class="panel-card">
+            <div class="panel-header">
+                <div>
+                    <h2>Tóm tắt đơn hàng</h2>
+                    <p><?= number_format(count($items)) ?> sản phẩm</p>
+                </div>
+                <i class="bi bi-bag-check"></i>
+            </div>
+            <table class="table mb-0 align-middle checkout-summary-table">
+                <tbody>
+                    <?php foreach ($items as $item): ?>
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-3">
+                                    <img src="<?= e($item['image_url'] ?: 'https://placehold.co/52') ?>"
+                                         class="line-item-image line-item-image-sm" alt="<?= e($item['name']) ?>">
+                                    <div>
+                                        <div class="fw-semibold"><?= e($item['name']) ?></div>
+                                        <?php if (!empty($item['variant_name'])): ?>
+                                            <div class="small text-muted">Mẫu: <?= e($item['variant_name']) ?></div>
+                                        <?php endif; ?>
+                                        <div class="small text-muted">
+                                            <?= e($item['quantity']) ?> x <?= format_vnd($item['price']) ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-end fw-semibold"><?= format_vnd($item['subtotal']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+                <tfoot class="table-light">
+                    <tr id="discount-row" style="display:none">
+                        <td class="text-success"><i class="bi bi-ticket-perforated me-1"></i> Giảm giá</td>
+                        <td class="text-end text-success fw-semibold" id="discount-amount-cell">-0đ</td>
+                    </tr>
+                    <tr>
+                        <th>Tổng cộng</th>
+                        <th class="text-end text-danger fs-5" id="checkout-total-cell"><?= format_vnd($total) ?></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </section>
+
+        <div class="checkout-note mt-3">
+            <i class="bi bi-shield-check me-1"></i>
+            Với chuyển khoản hoặc ví điện tử, đơn sẽ ở trạng thái chờ xử lý cho tới khi shop xác nhận thanh toán.
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="paymentConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentModalTitle">Xác nhận đặt hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body">
+                <div id="paymentCodPanel">
+                    <p class="mb-2">Bạn sẽ thanh toán khi nhận hàng.</p>
+                    <div class="alert alert-light border mb-0">
+                        Tổng tiền cần thanh toán: <strong class="text-danger" data-payment-total></strong>
+                    </div>
+                </div>
+
+                <div id="paymentCodePanel" class="d-none">
+                    <p class="mb-3" id="paymentInstruction"></p>
+                    <div class="text-center mb-3" id="paymentQrWrap">
+                        <img id="paymentQrImage" class="img-fluid border rounded bg-white p-2" style="max-width: 220px" src="" alt="QR thanh toán">
+                    </div>
+                    <div class="border rounded p-3 bg-light">
+                        <div class="small text-muted">Mã thanh toán</div>
+                        <div class="d-flex align-items-center justify-content-between gap-2">
+                            <code class="fs-5 fw-bold" data-payment-code></code>
+                            <button class="btn btn-sm btn-outline-primary" type="button" id="copyPaymentCode">
+                                <i class="bi bi-clipboard me-1"></i> Copy
+                            </button>
+                        </div>
+                        <hr>
+                        <div class="small text-muted">Số tiền</div>
+                        <div class="fw-semibold text-danger" data-payment-total></div>
+                        <div class="small text-muted mt-2" id="paymentReceiver"></div>
+                    </div>
+                    <div class="small text-muted mt-3">
+                        Sau khi đặt hàng, mã này cũng sẽ hiển thị trong chi tiết đơn để bạn đối chiếu.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Quay lại</button>
+                <button type="button" class="btn btn-success" id="confirmCheckoutSubmit">
+                    Xác nhận đặt hàng <i class="bi bi-check2-circle ms-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script nonce="<?= csp_nonce() ?>">
+const checkoutForm = document.getElementById('checkout-form');
+const paymentModal = new bootstrap.Modal(document.getElementById('paymentConfirmModal'));
+const codPanel = document.getElementById('paymentCodPanel');
+const codePanel = document.getElementById('paymentCodePanel');
+const modalTitle = document.getElementById('paymentModalTitle');
+const instruction = document.getElementById('paymentInstruction');
+const receiver = document.getElementById('paymentReceiver');
+const qrWrap = document.getElementById('paymentQrWrap');
+const qrImage = document.getElementById('paymentQrImage');
+const confirmButton = document.getElementById('confirmCheckoutSubmit');
+const copyButton = document.getElementById('copyPaymentCode');
+let allowSubmit = false;
+const paymentContentFromConfig = JSON.parse(checkoutForm.dataset.paymentOptions || '{}');
+
+const paymentContent = {
+    cod: {
+        title: 'Xác nhận đặt hàng COD',
+    },
+    bank_transfer: {
+        title: 'Thông tin chuyển khoản',
+        instruction: 'Vui lòng chuyển khoản đúng số tiền và ghi mã thanh toán trong nội dung chuyển khoản.',
+        receiver: 'Người nhận: TechMart Demo Bank · STK: 9704 0000 1234 5678',
+    },
+    e_wallet: {
+        title: 'Thông tin thanh toán ví điện tử',
+        instruction: 'Vui lòng dùng mã thanh toán để chuyển qua ví điện tử và giúp shop đối chiếu nhanh hơn.',
+        receiver: 'Ví nhận: TechMart Pay · Mã ví: TECHMARTPAY',
+    },
+};
+
+document.querySelectorAll('input[name="payment_method"]').forEach(input => {
+    input.addEventListener('change', () => {
+        document.querySelectorAll('.checkout-payment-option').forEach(option => option.classList.remove('is-selected'));
+        input.closest('.checkout-payment-option')?.classList.add('is-selected');
+    });
+    if (input.checked) {
+        input.closest('.checkout-payment-option')?.classList.add('is-selected');
+    }
+});
+
+checkoutForm.addEventListener('submit', event => {
+    if (allowSubmit) {
+        return;
+    }
+
+    event.preventDefault();
+    if (!checkoutForm.reportValidity()) {
+        return;
+    }
+
+    const method = checkoutForm.querySelector('input[name="payment_method"]:checked')?.value || 'cod';
+    const content = paymentContentFromConfig[method] || paymentContent[method] || paymentContent.cod;
+    const total = checkoutForm.dataset.orderTotal;
+    const code = checkoutForm.dataset.paymentReference;
+
+    modalTitle.textContent = content.title;
+    document.querySelectorAll('[data-payment-total]').forEach(el => {
+        el.textContent = total;
+    });
+
+    if (method === 'cod') {
+        codPanel.classList.remove('d-none');
+        codePanel.classList.add('d-none');
+    } else {
+        codPanel.classList.add('d-none');
+        codePanel.classList.remove('d-none');
+        instruction.textContent = content.instruction;
+        receiver.textContent = content.receiver;
+        document.querySelector('[data-payment-code]').textContent = code;
+        if (content.qr_url) {
+            qrImage.src = content.qr_url;
+            qrWrap.classList.remove('d-none');
+        } else {
+            qrImage.removeAttribute('src');
+            qrWrap.classList.add('d-none');
+        }
+    }
+
+    paymentModal.show();
+});
+
+confirmButton.addEventListener('click', () => {
+    allowSubmit = true;
+    checkoutForm.submit();
+});
+
+copyButton.addEventListener('click', async () => {
+    const code = checkoutForm.dataset.paymentReference;
+    try {
+        await navigator.clipboard.writeText(code);
+        copyButton.innerHTML = '<i class="bi bi-check2 me-1"></i> Đã copy';
+        setTimeout(() => {
+            copyButton.innerHTML = '<i class="bi bi-clipboard me-1"></i> Copy';
+        }, 1500);
+    } catch (error) {
+        window.prompt('Copy mã thanh toán:', code);
+    }
+});
+
+// Voucher AJAX
+const voucherInput     = document.getElementById('voucher-input');
+const voucherApplyBtn  = document.getElementById('voucher-apply-btn');
+const voucherFeedback  = document.getElementById('voucher-feedback');
+const voucherHidden    = document.getElementById('voucher-code-hidden');
+const discountRow      = document.getElementById('discount-row');
+const discountCell     = document.getElementById('discount-amount-cell');
+const totalCell        = document.getElementById('checkout-total-cell');
+
+function applyVoucherState(discountFmt, newTotalFmt) {
+    discountRow.style.display = '';
+    discountCell.textContent  = '-' + discountFmt;
+    totalCell.textContent     = newTotalFmt;
+    checkoutForm.dataset.orderTotal = newTotalFmt; // dùng cho modal confirm
+    // orderTotalRaw KHÔNG cập nhật — luôn giữ subtotal gốc để validate lại nếu user đổi mã
+}
+
+function resetVoucherState() {
+    discountRow.style.display = 'none';
+    const originalTotal = checkoutForm.dataset.orderTotalRaw;
+    const originalFmt   = new Intl.NumberFormat('vi-VN').format(Number(originalTotal || 0)) + 'đ';
+    totalCell.textContent = originalFmt;
+    checkoutForm.dataset.orderTotal = originalFmt;
+    voucherHidden.value = '';
+}
+
+voucherApplyBtn.addEventListener('click', async () => {
+    const code  = voucherInput.value.trim().toUpperCase();
+    const total = Number(checkoutForm.dataset.orderTotalRaw || 0);
+    const base  = window.APP_URL || ''; // đọc lazily — APP_URL đã được set khi handler chạy
+
+    if (!code) {
+        voucherFeedback.innerHTML = '<span class="text-danger">Vui lòng nhập mã giảm giá.</span>';
+        resetVoucherState();
+        return;
+    }
+
+    voucherApplyBtn.disabled = true;
+    voucherFeedback.innerHTML = '<span class="text-muted">Đang kiểm tra...</span>';
+
+    try {
+        const res = await fetch(base + '/voucher/validate?code=' + encodeURIComponent(code) + '&total=' + total, {
+            credentials: 'same-origin',
+        });
+        const data = await res.json();
+
+        if (!data.valid) {
+            voucherFeedback.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>' + escHtml(data.error) + '</span>';
+            resetVoucherState();
+        } else {
+            const discount    = Number(data.discount || 0);
+            const newTotal    = Math.max(0, total - discount);
+            const discountFmt = new Intl.NumberFormat('vi-VN').format(discount) + 'đ';
+            const newTotalFmt = new Intl.NumberFormat('vi-VN').format(newTotal) + 'đ';
+
+            voucherFeedback.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Áp dụng thành công! Giảm ' + discountFmt + '.</span>';
+            voucherHidden.value = code;
+            applyVoucherState(discountFmt, newTotalFmt);
+        }
+    } catch (err) {
+        voucherFeedback.innerHTML = '<span class="text-danger">Không thể kết nối. Vui lòng thử lại.</span>';
+    } finally {
+        voucherApplyBtn.disabled = false;
+    }
+});
+
+voucherInput.addEventListener('input', () => {
+    if (voucherHidden.value !== '') {
+        resetVoucherState();
+        voucherFeedback.innerHTML = '';
+    }
+});
+</script>

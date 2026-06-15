@@ -1,0 +1,26 @@
+# Front controller pattern - mọi request không phải file/folder thực sẽ vào index.php
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Nếu request không phải là file hoặc folder thực thì chuyển vào index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# Security headers (basic)
+<IfModule mod_headers.c>
+    Header always unset X-Powered-By
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Cấm liệt kê directory
+Options -Indexes
+
+# Cấm truy cập file nhạy cảm
+<FilesMatch "(\.env|\.gitignore|composer\.json|composer\.lock)$">
+    Require all denied
+</FilesMatch>
