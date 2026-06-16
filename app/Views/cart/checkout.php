@@ -4,9 +4,11 @@
  * @var int    $total
  * @var array  $user
  * @var string $paymentReferenceCode
+ * @var array  $availableVouchers
  */
 $paymentOld = old('payment_method', 'cod');
 $paymentReferenceCode = $paymentReferenceCode ?? '';
+$availableVouchers = $availableVouchers ?? [];
 $paymentConfig = \App\Core\App::$config['payment'] ?? [];
 $paymentAmount = (int)round((float)$total);
 $bankQrUrl = '';
@@ -174,6 +176,31 @@ $paymentLabels = [
                             </button>
                         </div>
                         <div id="voucher-feedback" class="mt-1 small"></div>
+                        <?php if (!empty($availableVouchers)): ?>
+                            <div class="available-voucher-list mt-3">
+                                <div class="available-voucher-heading">
+                                    <i class="bi bi-ticket-perforated"></i>
+                                    <span>Mã có thể dùng</span>
+                                </div>
+                                <div class="available-voucher-grid">
+                                    <?php foreach ($availableVouchers as $voucher): ?>
+                                        <?php
+                                            $discountLabel = $voucher['discount_type'] === 'percent'
+                                                ? 'Giảm ' . rtrim(rtrim(number_format((float)$voucher['discount_value'], 2, ',', '.'), '0'), ',') . '%'
+                                                : 'Giảm ' . format_vnd((float)$voucher['discount_value']);
+                                            $minOrder = (float)($voucher['min_order'] ?? 0);
+                                        ?>
+                                        <button type="button" class="available-voucher-chip" data-voucher-code="<?= e($voucher['code']) ?>">
+                                            <strong><?= e($voucher['code']) ?></strong>
+                                            <span><?= e($discountLabel) ?></span>
+                                            <?php if ($minOrder > 0): ?>
+                                                <small>Đơn từ <?= format_vnd($minOrder) ?></small>
+                                            <?php endif; ?>
+                                        </button>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                         <input type="hidden" name="voucher_code" id="voucher-code-hidden">
                     </div>
 
@@ -365,6 +392,16 @@ function paymentContentFor(method) {
     if (method === 'bank_transfer') {
         content.qr_url = buildBankQrUrl() || content.qr_url || '';
     }
+
+    if (method === 'e_wallet' && !content.qr_url) {
+        const bankContent = { ...(defaults.bank_transfer || {}), ...(configured.bank_transfer || {}) };
+        content.qr_url = buildBankQrUrl() || '';
+        if (content.qr_url && bankContent.receiver) {
+            content.receiver = bankContent.receiver;
+            content.instruction = 'Ví điện tử chưa cấu hình QR riêng. Vui lòng quét QR chuyển khoản và ghi đúng mã thanh toán để shop đối chiếu.';
+        }
+    }
+
     return content;
 }
 
@@ -502,6 +539,22 @@ const voucherHidden    = document.getElementById('voucher-code-hidden');
 const discountRow      = document.getElementById('discount-row');
 const discountCell     = document.getElementById('discount-amount-cell');
 const totalCell        = document.getElementById('checkout-total-cell');
+const voucherChips     = document.querySelectorAll('[data-voucher-code]');
+
+function setActiveVoucherChip(code) {
+    voucherChips.forEach(chip => {
+        chip.classList.toggle('is-active', chip.dataset.voucherCode === code);
+    });
+}
+
+voucherChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+        const code = chip.dataset.voucherCode || '';
+        voucherInput.value = code;
+        setActiveVoucherChip(code);
+        voucherApplyBtn.click();
+    });
+});
 
 new MutationObserver(refreshPaymentGuide).observe(totalCell, {
     childList: true,
@@ -548,6 +601,7 @@ voucherApplyBtn.addEventListener('click', async () => {
 
         if (!data.valid) {
             voucherFeedback.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>' + escHtml(data.error) + '</span>';
+            setActiveVoucherChip('');
             resetVoucherState();
         } else {
             const discount    = Number(data.discount || 0);
@@ -557,6 +611,7 @@ voucherApplyBtn.addEventListener('click', async () => {
 
             voucherFeedback.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Áp dụng thành công! Giảm ' + discountFmt + '.</span>';
             voucherHidden.value = code;
+            setActiveVoucherChip(code);
             applyVoucherState(discountFmt, newTotalFmt);
         }
     } catch (err) {
@@ -569,6 +624,7 @@ voucherApplyBtn.addEventListener('click', async () => {
 voucherInput.addEventListener('input', () => {
     if (voucherHidden.value !== '') {
         resetVoucherState();
+        setActiveVoucherChip('');
         voucherFeedback.innerHTML = '';
     }
 });

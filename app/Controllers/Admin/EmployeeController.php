@@ -46,8 +46,8 @@ final class EmployeeController extends Controller
         $data = $this->validate($_POST, [
             'full_name' => ['required', 'max:100'],
             'email' => ['required', 'email', 'max:150'],
-            'phone' => [],
-            'password' => ['required', 'min:6'],
+            'phone' => ['max:20'],
+            'password' => ['required', 'min:6', 'max:100'],
         ]);
 
         $employee = new Employee();

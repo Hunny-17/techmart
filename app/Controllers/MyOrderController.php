@@ -11,6 +11,8 @@ use App\Core\Flash;
 use App\Core\Session;
 use App\Models\Order;
 use App\Models\OrderDetail;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Voucher;
 
 final class MyOrderController extends Controller
@@ -68,9 +70,38 @@ final class MyOrderController extends Controller
         }
 
         $cart = Session::get('cart', []);
+        $productModel = new Product();
+        $variantModel = new ProductVariant();
+
         foreach ($items as $item) {
-            $key = (int)$item['product_id'] . ':' . ((int)($item['variant_id'] ?? 0));
-            $cart[$key] = ($cart[$key] ?? 0) + (int)$item['quantity'];
+            $productId = (int)$item['product_id'];
+            $variantId = (int)($item['variant_id'] ?? 0);
+            $quantity = max(1, (int)$item['quantity']);
+
+            $product = $productModel->find($productId);
+            if ($product === null || ($product['status'] ?? '') !== 'active') {
+                Flash::set('error', 'Một sản phẩm trong đơn cũ hiện không còn bán.');
+                $this->redirect('/my-orders/' . $id);
+            }
+
+            $stock = (int)$product['stock_quantity'];
+            if ($variantId > 0) {
+                $variant = $variantModel->findForProduct($variantId, $productId);
+                if ($variant === null || ($variant['status'] ?? '') !== 'active') {
+                    Flash::set('error', 'Một mẫu sản phẩm trong đơn cũ hiện không còn bán.');
+                    $this->redirect('/my-orders/' . $id);
+                }
+                $stock = (int)$variant['stock_quantity'];
+            }
+
+            $key = $productId . ':' . $variantId;
+            $nextQty = ($cart[$key] ?? 0) + $quantity;
+            if ($nextQty > $stock) {
+                Flash::set('error', 'Số lượng mua lại vượt quá tồn kho hiện có.');
+                $this->redirect('/my-orders/' . $id);
+            }
+
+            $cart[$key] = $nextQty;
         }
         Session::set('cart', $cart);
 

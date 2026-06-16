@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * @var array $product
  * @var array $reviews
@@ -41,8 +41,8 @@ if ((int)$product['id'] === 13 && str_contains((string)$product['description'], 
 }
 ?>
 
-<div class="row g-4">
-    <div class="col-md-5">
+<div class="row g-4 align-items-start product-show-layout">
+    <div class="col-lg-5">
         <div class="product-media-frame product-media-category-<?= e($product['category_id'] ?? 0) ?> mb-3">
             <img id="product-main-image"
                  src="<?= e($mainImage) ?>"
@@ -70,7 +70,7 @@ if ((int)$product['id'] === 13 && str_contains((string)$product['description'], 
         <?php endif; ?>
     </div>
 
-    <div class="col-md-7">
+    <div class="col-lg-7 product-purchase-panel">
         <nav aria-label="breadcrumb" class="mb-3">
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= url('/') ?>">Trang chủ</a></li>

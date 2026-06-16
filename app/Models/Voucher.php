@@ -56,6 +56,31 @@ final class Voucher extends Model
         return ['valid' => true, 'error' => '', 'discount' => round($discount), 'voucher' => $v];
     }
 
+    public function availableForCustomer(float $orderTotal = 0.0, int $limit = 6): array
+    {
+        $limit = max(1, min(12, $limit));
+        $stmt = $this->db()->prepare("
+            SELECT *
+            FROM vouchers
+            WHERE is_active = 1
+              AND (expires_at IS NULL OR expires_at > NOW())
+              AND (max_uses IS NULL OR used_count < max_uses)
+              AND COALESCE(min_order, 0) <= ?
+            ORDER BY discount_value DESC, created_at DESC
+            LIMIT $limit
+        ");
+        $stmt->execute([$orderTotal]);
+
+        return $stmt->fetchAll();
+    }
+
+    public function orderUsageCount(int $id): int
+    {
+        $stmt = $this->db()->prepare('SELECT COUNT(*) FROM orders WHERE voucher_id = ?');
+        $stmt->execute([$id]);
+
+        return (int)$stmt->fetchColumn();
+    }
     public function incrementUsed(int $id): void
     {
         $this->db()->prepare('UPDATE vouchers SET used_count = used_count + 1 WHERE id = ?')->execute([$id]);

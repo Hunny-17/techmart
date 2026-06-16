@@ -53,6 +53,12 @@ $allowedNextStatuses = [
 ];
 $allowedStatuses = $allowedNextStatuses[$order['status']] ?? [$order['status']];
 $isTerminalStatus = in_array($order['status'], ['delivered', 'cancelled'], true);
+$requiresPaidBeforeConfirm = ($order['status'] ?? '') === 'pending'
+    && in_array((string)($order['payment_method'] ?? ''), ['bank_transfer', 'e_wallet'], true)
+    && ($order['payment_status'] ?? 'unpaid') !== 'paid';
+if ($requiresPaidBeforeConfirm) {
+    $allowedStatuses = array_values(array_diff($allowedStatuses, ['confirmed']));
+}
 $isCodPayment = ($order['payment_method'] ?? '') === 'cod';
 $codCanBePaid = !$isCodPayment || $order['status'] === 'delivered';
 $paymentHint = $isCodPayment
@@ -158,7 +164,9 @@ $paymentHint = $isCodPayment
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <div class="form-text"><?= e($statusHints[$order['status']] ?? '') ?></div>
+                        <div class="form-text">
+                            <?= e($requiresPaidBeforeConfirm ? 'Cần xác nhận thanh toán đã paid trước khi duyệt đơn chuyển khoản/ví điện tử.' : ($statusHints[$order['status']] ?? '')) ?>
+                        </div>
                     </div>
                     <button class="btn btn-primary w-100" <?= $isTerminalStatus ? 'disabled' : '' ?>>
                         <i class="bi bi-check2-circle"></i> Lưu trạng thái

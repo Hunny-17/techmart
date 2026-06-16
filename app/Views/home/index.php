@@ -7,6 +7,15 @@ $featured = $featured ?? [];
 $categories = $categories ?? [];
 $heroProduct = $featured[0] ?? null;
 $heroImage = $heroProduct['image_url'] ?? 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80';
+$heroSlides = array_slice($featured, 0, 5);
+$isNewProduct = static function (array $product): bool {
+    if (empty($product['created_at'])) {
+        return false;
+    }
+
+    $createdAt = strtotime((string)$product['created_at']);
+    return $createdAt !== false && $createdAt >= strtotime('-14 days');
+};
 $categoryIcons = [
     'laptop' => 'bi-laptop',
     'máy tính' => 'bi-pc-display',
@@ -24,37 +33,70 @@ $categoryIcons = [
 ];
 ?>
 
+<?php if (!empty($heroSlides)): ?>
+<section class="tech-home-hero tech-home-hero-slider mb-4" data-home-hero>
+    <div class="tech-home-hero-track">
+        <?php foreach ($heroSlides as $index => $slide): ?>
+            <?php $slideImage = $slide['image_url'] ?: 'https://placehold.co/720x520?text=TechMart'; ?>
+            <article class="tech-home-hero-slide <?= $index === 0 ? 'active' : '' ?>" data-hero-slide>
+                <div class="tech-home-hero-copy">
+                    <span class="store-eyebrow"><?= $isNewProduct($slide) ? 'Sản phẩm mới' : 'TechMart nổi bật' ?></span>
+                    <h1><?= e($slide['name']) ?></h1>
+                    <p>
+                        <?= e(mb_strlen((string)($slide['description'] ?? '')) > 0
+                            ? mb_substr(strip_tags((string)$slide['description']), 0, 130) . '...'
+                            : 'Khám phá sản phẩm công nghệ chính hãng, thông tin rõ ràng và hình ảnh trực quan để mua sắm tự tin hơn.') ?>
+                    </p>
+                    <div class="tech-home-hero-actions">
+                        <a class="btn btn-primary btn-lg" href="<?= url('/products/' . $slide['id']) ?>">
+                            Xem chi tiết <i class="bi bi-arrow-right ms-1"></i>
+                        </a>
+                        <a class="btn btn-outline-light btn-lg" href="<?= url('/products') ?>">
+                            Xem tất cả
+                        </a>
+                    </div>
+                    <div class="tech-home-hero-price">
+                        <span>Giá bán</span>
+                        <strong><?= format_vnd((float)$slide['price']) ?></strong>
+                        <?php if ($isNewProduct($slide)): ?>
+                            <em>Mới về</em>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="tech-home-hero-visual">
+                    <img src="<?= e($slideImage) ?>" alt="<?= e($slide['name']) ?>">
+                    <div class="tech-hero-product-note">
+                        <span><?= $isNewProduct($slide) ? 'Mới tại TechMart' : 'Đang được chú ý' ?></span>
+                        <strong><?= e($slide['name']) ?></strong>
+                        <small><?= format_vnd((float)$slide['price']) ?></small>
+                    </div>
+                </div>
+            </article>
+        <?php endforeach; ?>
+    </div>
+
+    <?php if (count($heroSlides) > 1): ?>
+        <div class="tech-home-hero-dots" aria-label="Chọn sản phẩm nổi bật">
+            <?php foreach ($heroSlides as $index => $slide): ?>
+                <button type="button"
+                        class="<?= $index === 0 ? 'active' : '' ?>"
+                        data-hero-dot="<?= e($index) ?>"
+                        aria-label="Xem slide <?= e($index + 1) ?>"></button>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+</section>
+<?php else: ?>
 <section class="tech-home-hero mb-4">
     <div class="tech-home-hero-copy">
         <span class="store-eyebrow">TechMart</span>
         <h1>Thiết bị công nghệ cho setup làm việc và giải trí hiện đại</h1>
-        <p>
-            Khám phá sản phẩm chính hãng, thông tin rõ ràng, ảnh thực tế và lựa chọn mẫu trực quan để mua sắm tự tin hơn.
-        </p>
-        <div class="d-flex flex-wrap gap-2">
-            <a class="btn btn-primary btn-lg" href="<?= url('/products') ?>">
-                Xem sản phẩm <i class="bi bi-arrow-right ms-1"></i>
-            </a>
-            <?php if ($heroProduct): ?>
-                <a class="btn btn-outline-light btn-lg" href="<?= url('/products/' . $heroProduct['id']) ?>">
-                    Sản phẩm nổi bật
-                </a>
-            <?php endif; ?>
-        </div>
-    </div>
-
-    <div class="tech-home-hero-visual">
-        <img src="<?= e($heroImage) ?>" alt="<?= e($heroProduct['name'] ?? 'TechMart products') ?>">
-        <?php if ($heroProduct): ?>
-            <div class="tech-hero-product-note">
-                <span>Đang được chú ý</span>
-                <strong><?= e($heroProduct['name']) ?></strong>
-                <small><?= format_vnd((float)$heroProduct['price']) ?></small>
-            </div>
-        <?php endif; ?>
+        <p>Khám phá sản phẩm chính hãng, thông tin rõ ràng, ảnh thực tế và lựa chọn mẫu trực quan để mua sắm tự tin hơn.</p>
+        <a class="btn btn-primary btn-lg" href="<?= url('/products') ?>">Xem sản phẩm <i class="bi bi-arrow-right ms-1"></i></a>
     </div>
 </section>
-
+<?php endif; ?>
 <section class="home-service-strip mb-4" aria-label="TechMart service highlights">
     <div>
         <i class="bi bi-patch-check"></i>
@@ -106,7 +148,7 @@ $categoryIcons = [
     </section>
 <?php endif; ?>
 
-<section>
+<section class="home-featured-products">
     <div class="section-heading">
         <div>
             <h2>Sản phẩm gợi ý</h2>
@@ -121,9 +163,12 @@ $categoryIcons = [
         <div class="row g-3">
             <?php foreach ($featured as $p): ?>
                 <div class="col-6 col-md-4 col-xl-3">
-                    <article class="home-product-card">
+                    <article class="home-product-card home-page-product-card">
                         <a href="<?= url('/products/' . $p['id']) ?>" class="home-product-media">
                             <img src="<?= e($p['image_url'] ?: 'https://placehold.co/360x280?text=No+Image') ?>" alt="<?= e($p['name']) ?>">
+                            <?php if ($isNewProduct($p)): ?>
+                                <span class="product-card-new-badge">Mới</span>
+                            <?php endif; ?>
                             <?php if ((int)$p['stock_quantity'] <= 0): ?>
                                 <span class="product-card-sold-out">Hết hàng</span>
                             <?php endif; ?>
@@ -153,7 +198,7 @@ $categoryIcons = [
 </section>
 
 <?php if (!empty($recentProducts)): ?>
-<section class="mt-5">
+<section class="mt-5 home-recent-products">
     <div class="section-heading">
         <div>
             <h2>Đã xem gần đây</h2>
@@ -164,10 +209,13 @@ $categoryIcons = [
         <?php foreach ($recentProducts as $r): ?>
             <?php $isWishlisted = in_array((int)$r['id'], $wishlistedIds ?? [], true); ?>
             <div class="col-6 col-md-4 col-xl-3">
-                <article class="home-product-card">
+                <article class="home-product-card home-page-product-card">
                     <a href="<?= url('/products/' . $r['id']) ?>" class="home-product-media">
                         <img src="<?= e($r['image_url'] ?: 'https://placehold.co/360x280?text=No+Image') ?>"
                              alt="<?= e($r['name']) ?>">
+                        <?php if ($isNewProduct($r)): ?>
+                            <span class="product-card-new-badge">Mới</span>
+                        <?php endif; ?>
                         <?php if ((int)$r['stock_quantity'] <= 0): ?>
                             <span class="product-card-sold-out">Hết hàng</span>
                         <?php endif; ?>

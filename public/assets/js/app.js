@@ -10,8 +10,51 @@ document.addEventListener('DOMContentLoaded', () => {
     initFlashAutoDismiss();
     initCopyButtons();
     initCompare();
+    initHomeHeroCarousel();
 });
 
+
+function initHomeHeroCarousel() {
+    const hero = document.querySelector('[data-home-hero]');
+    if (!hero) return;
+
+    const slides = Array.from(hero.querySelectorAll('[data-hero-slide]'));
+    const dots = Array.from(hero.querySelectorAll('[data-hero-dot]'));
+    if (slides.length <= 1) return;
+
+    let current = Math.max(0, slides.findIndex(slide => slide.classList.contains('active')));
+    let timer = null;
+
+    const show = index => {
+        current = (index + slides.length) % slides.length;
+        slides.forEach((slide, i) => slide.classList.toggle('active', i === current));
+        dots.forEach((dot, i) => dot.classList.toggle('active', i === current));
+    };
+
+    const start = () => {
+        stop();
+        timer = window.setInterval(() => show(current + 1), 4500);
+    };
+
+    const stop = () => {
+        if (timer !== null) {
+            window.clearInterval(timer);
+            timer = null;
+        }
+    };
+
+    dots.forEach(dot => {
+        dot.addEventListener('click', () => {
+            show(Number(dot.dataset.heroDot || 0));
+            start();
+        });
+    });
+
+    hero.addEventListener('mouseenter', stop);
+    hero.addEventListener('mouseleave', start);
+    show(current);
+    start();
+}
 function initConfirmForms() {
     document.querySelectorAll('form[data-confirm]').forEach(form => {
         form.addEventListener('submit', e => {

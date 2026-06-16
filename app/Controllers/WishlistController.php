@@ -6,6 +6,7 @@ namespace App\Controllers;
 use App\Core\Auth;
 use App\Core\Controller;
 use App\Core\Csrf;
+use App\Models\Product;
 use App\Models\Wishlist;
 
 final class WishlistController extends Controller
@@ -45,6 +46,11 @@ final class WishlistController extends Controller
             return;
         }
 
+        $product = (new Product())->find($productId);
+        if ($product === null || ($product['status'] ?? '') !== 'active') {
+            $this->json(['error' => 'Sản phẩm không tồn tại hoặc đã ngừng bán.'], 422);
+            return;
+        }
         $wishlist   = new Wishlist();
         $userId     = (int)Auth::id();
         $wishlisted = $wishlist->toggle($userId, $productId);

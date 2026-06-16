@@ -254,7 +254,7 @@ final class OrderController extends Controller
             'status' => ['required', 'in:' . implode(',', self::STATUSES)],
         ]);
 
-        if (!$this->canChangeStatus($order['status'], $data['status'])) {
+        if (!$this->canChangeStatus($order, $data['status'])) {
             Flash::set('error', 'Trạng thái đơn hàng không hợp lệ.');
             $this->redirect('/admin/orders/' . $id);
         }
@@ -271,6 +271,17 @@ final class OrderController extends Controller
         if ($order['status'] !== $data['status']) {
             $this->notifyCustomerStatusChange($id, $data['status']);
         }
+
+        if (
+            $data['status'] === 'delivered'
+            && (string)($order['payment_method'] ?? '') === 'cod'
+            && (string)($order['payment_status'] ?? 'unpaid') !== 'paid'
+        ) {
+            $orderModel->changePaymentStatus($id, 'paid');
+            $this->notifyCustomerPaymentPaid($id);
+            (new AdminLogger())->log('change_payment_status', 'order', $id, "Tự động đánh dấu COD đã thanh toán khi giao đơn #{$id}");
+        }
+
         Flash::set('success', 'Cập nhật trạng thái đơn hàng thành công.');
         (new AdminLogger())->log('change_status', 'order', $id, "Đổi trạng thái đơn #{$id}: {$order['status']} → {$data['status']}");
         $this->redirect('/admin/orders/' . $id);
@@ -356,8 +367,10 @@ final class OrderController extends Controller
         }
     }
 
-    private function canChangeStatus(string $current, string $next): bool
+    private function canChangeStatus(array $order, string $next): bool
     {
+        $current = (string)$order['status'];
+
         if ($current === $next) {
             return true;
         }
@@ -366,6 +379,13 @@ final class OrderController extends Controller
             return true;
         }
 
+        if ($current === 'pending' && $next === 'confirmed') {
+            $paymentMethod = (string)($order['payment_method'] ?? 'cod');
+            $paymentStatus = (string)($order['payment_status'] ?? 'unpaid');
+            if (in_array($paymentMethod, ['bank_transfer', 'e_wallet'], true) && $paymentStatus !== 'paid') {
+                return false;
+            }
+        }
         $flow = [
             'pending' => 'confirmed',
             'confirmed' => 'shipping',

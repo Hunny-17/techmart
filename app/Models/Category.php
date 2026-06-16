@@ -104,4 +104,25 @@ final class Category extends Model
 
         return (int)$stmt->fetchColumn();
     }
+
+    public function wouldCreateParentCycle(int $id, ?int $parentId): bool
+    {
+        if ($parentId === null) {
+            return false;
+        }
+
+        $current = $parentId;
+        while ($current !== null) {
+            if ($current === $id) {
+                return true;
+            }
+
+            $stmt = $this->db()->prepare('SELECT parent_id FROM categories WHERE id = ? LIMIT 1');
+            $stmt->execute([$current]);
+            $next = $stmt->fetchColumn();
+            $current = $next !== false && $next !== null ? (int)$next : null;
+        }
+
+        return false;
+    }
 }

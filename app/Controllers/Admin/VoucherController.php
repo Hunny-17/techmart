@@ -44,10 +44,17 @@ final class VoucherController extends Controller
 
         $code = strtoupper(trim($data['code']));
         $discountValue = (float)($data['discount_value'] ?? 0);
+        $minOrderRaw = trim((string)($data['min_order'] ?? ''));
+        $maxUsesRaw = trim((string)($data['max_uses'] ?? ''));
+        $minOrder = $minOrderRaw !== '' ? (float)$minOrderRaw : 0.0;
+        $maxUses = $maxUsesRaw !== '' ? (int)$maxUsesRaw : null;
 
         $manualError = match (true) {
             (new Voucher())->codeExists($code)                            => 'Mã voucher "' . $code . '" đã tồn tại.',
             $discountValue <= 0                                           => 'Giá trị giảm phải lớn hơn 0.',
+            $minOrderRaw !== '' && !is_numeric($minOrderRaw)             => 'Đơn tối thiểu phải là số.',
+            $minOrder < 0                                                => 'Đơn tối thiểu không được âm.',
+            $maxUsesRaw !== '' && (!ctype_digit($maxUsesRaw) || (int)$maxUsesRaw <= 0) => 'Số lượt dùng tối đa phải là số nguyên lớn hơn 0.',
             $data['discount_type'] === 'percent' && $discountValue > 100  => 'Phần trăm giảm không được vượt quá 100.',
             default                                                       => null,
         };
@@ -57,14 +64,13 @@ final class VoucherController extends Controller
             $this->redirect('/admin/vouchers/create');
         }
 
-        $maxUses   = isset($data['max_uses']) && $data['max_uses'] !== '' ? (int)$data['max_uses'] : null;
         $expiresAt = isset($data['expires_at']) && $data['expires_at'] !== '' ? $data['expires_at'] : null;
 
         (new Voucher())->create([
             'code'           => $code,
             'discount_type'  => $data['discount_type'],
             'discount_value' => $discountValue,
-            'min_order'      => max(0, (float)($data['min_order'] ?? 0)),
+            'min_order'      => $minOrder,
             'max_uses'       => $maxUses,
             'expires_at'     => $expiresAt,
             'is_active'      => 1,
@@ -110,10 +116,17 @@ final class VoucherController extends Controller
 
         $code = strtoupper(trim($data['code']));
         $discountValue = (float)($data['discount_value'] ?? 0);
+        $minOrderRaw = trim((string)($data['min_order'] ?? ''));
+        $maxUsesRaw = trim((string)($data['max_uses'] ?? ''));
+        $minOrder = $minOrderRaw !== '' ? (float)$minOrderRaw : 0.0;
+        $maxUses = $maxUsesRaw !== '' ? (int)$maxUsesRaw : null;
 
         $manualError = match (true) {
             (new Voucher())->codeExists($code, $id)                       => 'Mã voucher "' . $code . '" đã tồn tại.',
             $discountValue <= 0                                           => 'Giá trị giảm phải lớn hơn 0.',
+            $minOrderRaw !== '' && !is_numeric($minOrderRaw)             => 'Đơn tối thiểu phải là số.',
+            $minOrder < 0                                                => 'Đơn tối thiểu không được âm.',
+            $maxUsesRaw !== '' && (!ctype_digit($maxUsesRaw) || (int)$maxUsesRaw <= 0) => 'Số lượt dùng tối đa phải là số nguyên lớn hơn 0.',
             $data['discount_type'] === 'percent' && $discountValue > 100  => 'Phần trăm giảm không được vượt quá 100.',
             default                                                       => null,
         };
@@ -123,14 +136,13 @@ final class VoucherController extends Controller
             $this->redirect('/admin/vouchers/' . $id . '/edit');
         }
 
-        $maxUses   = isset($data['max_uses']) && $data['max_uses'] !== '' ? (int)$data['max_uses'] : null;
         $expiresAt = isset($data['expires_at']) && $data['expires_at'] !== '' ? $data['expires_at'] : null;
 
         (new Voucher())->update($id, [
             'code'           => $code,
             'discount_type'  => $data['discount_type'],
             'discount_value' => $discountValue,
-            'min_order'      => max(0, (float)($data['min_order'] ?? 0)),
+            'min_order'      => $minOrder,
             'max_uses'       => $maxUses,
             'expires_at'     => $expiresAt,
             'is_active'      => isset($data['is_active']) ? 1 : 0,
@@ -144,12 +156,20 @@ final class VoucherController extends Controller
     {
         Csrf::verify();
 
-        if ((new Voucher())->find($id) === null) {
+        $voucher = new Voucher();
+        $row = $voucher->find($id);
+        if ($row === null) {
             Flash::set('error', 'Không tìm thấy voucher.');
             $this->redirect('/admin/vouchers');
         }
 
-        (new Voucher())->delete($id);
+        if ($voucher->orderUsageCount($id) > 0 || (int)($row['used_count'] ?? 0) > 0) {
+            $voucher->update($id, ['is_active' => 0]);
+            Flash::set('warning', 'Voucher đã phát sinh đơn hàng nên không xóa cứng. Hệ thống đã tắt voucher để giữ lịch sử đơn hàng.');
+            $this->redirect('/admin/vouchers');
+        }
+
+        $voucher->delete($id);
         Flash::set('success', 'Đã xóa voucher.');
         $this->redirect('/admin/vouchers');
     }

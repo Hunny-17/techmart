@@ -1,14 +1,14 @@
 # TechMart Web
 
-TechMart là website thương mại điện tử bán thiết bị công nghệ, được xây dựng cho môn **Lập trình Web Nâng cao** tại Văn Hiến University.
+TechMart là website thương mại điện tử bán thiết bị công nghệ, được xây dựng cho môn Lập trình Web Nâng cao tại Văn Hiến University.
 
-Stack chính:
+## Stack
 
-- PHP 8 OOP, mô hình MVC tự xây dựng
-- MySQL hoặc MariaDB trên XAMPP
-- Bootstrap 5, Bootstrap Icons, Vanilla JavaScript
-- Session-based cart, không dùng cookie cho giỏ hàng
-- Không dùng Laravel, Composer framework, React/Vue/Angular
+- PHP 8 OOP, mô hình MVC tự xây dựng.
+- MySQL hoặc MariaDB trên XAMPP.
+- Bootstrap 5, Bootstrap Icons, Vanilla JavaScript.
+- Giỏ hàng lưu bằng `$_SESSION`, không dùng cookie cho cart.
+- Không dùng Laravel, Composer framework, React, Vue hoặc Angular.
 
 ## Tính năng chính
 
@@ -17,12 +17,13 @@ Stack chính:
 - Đăng ký, đăng nhập, đăng xuất.
 - Xác thực email, quên mật khẩu và đặt lại mật khẩu.
 - Trang chủ, danh sách sản phẩm, tìm kiếm, lọc danh mục, lọc giá, sắp xếp và phân trang.
-- Trang chi tiết sản phẩm với gallery ảnh, biến thể/mẫu, tồn kho, mô tả, đánh giá và sản phẩm liên quan.
+- Trang chi tiết sản phẩm với gallery ảnh, mẫu/biến thể, tồn kho, mô tả, đánh giá và sản phẩm liên quan.
 - So sánh tối đa 3 sản phẩm bằng `localStorage`.
 - Danh sách yêu thích.
-- Giỏ hàng lưu bằng `$_SESSION`.
+- Giỏ hàng lưu bằng session.
 - Checkout với COD, chuyển khoản ngân hàng và ví điện tử.
-- Mã thanh toán tham chiếu và QR VietQR khi có cấu hình ngân hàng.
+- Gợi ý mã giảm giá có thể dùng ngay tại checkout.
+- Mã thanh toán tham chiếu và QR VietQR tự render theo tổng tiền cần thanh toán.
 - Theo dõi đơn hàng, xem chi tiết đơn, hủy đơn, đặt lại đơn.
 - Đánh giá sản phẩm sau khi đơn đã giao.
 - Trang tài khoản cá nhân, cập nhật thông tin và đổi mật khẩu.
@@ -30,13 +31,15 @@ Stack chính:
 ### Quản trị
 
 - Dashboard vận hành: doanh thu, đơn hàng, khách mới, tồn kho thấp, trạng thái thanh toán.
-- Quản lý sản phẩm, ảnh phụ, biến thể/mẫu, tồn kho và nhập kho.
-- Quản lý danh mục.
+- Quản lý sản phẩm, ảnh phụ, mẫu/biến thể, tồn kho và nhập kho.
+- Quản lý danh mục, có chặn vòng lặp danh mục cha/con.
 - Quản lý đơn hàng, trạng thái đơn, trạng thái thanh toán, hóa đơn và email đã gửi.
+- Ràng buộc thanh toán: đơn chuyển khoản/ví phải được xác nhận đã thanh toán trước khi duyệt.
+- COD tự chuyển sang đã thanh toán khi đơn được giao thành công.
 - Quản lý khách hàng, khóa/mở khóa, gửi lại email xác thực.
 - Quản lý nhân viên.
 - Quản lý đánh giá.
-- Quản lý voucher.
+- Quản lý voucher, không xóa cứng voucher đã phát sinh đơn hàng.
 - Tổng quan tồn kho.
 - Nhật ký thao tác admin.
 - Export dữ liệu đơn hàng/khách hàng ở các màn hỗ trợ.
@@ -69,7 +72,7 @@ techmart-web/
 |-- database/
 |   |-- schema.sql           Cấu trúc database hiện tại
 |   |-- seed.sql             Dữ liệu mẫu
-|   `-- migrations/          Các migration bổ sung trong quá trình phát triển
+|   `-- migrations/          Migration bổ sung trong quá trình phát triển
 |
 |-- storage/
 |   |-- logs/                Log lỗi local
@@ -90,7 +93,7 @@ techmart-web/
 - PHP 8.0 trở lên, khuyến nghị PHP 8.2.
 - MySQL 8.0 hoặc MariaDB 10.4 trở lên.
 - Apache bật `mod_rewrite`.
-- XAMPP đặt project tại:
+- Project đặt tại:
 
 ```text
 C:\Xampp\htdocs\techmart-web
@@ -103,7 +106,7 @@ git clone https://github.com/Hunny-17/techmart.git techmart-web
 cd techmart-web
 ```
 
-Nếu đang dùng bản trong XAMPP hiện tại thì mở trực tiếp:
+Nếu đang dùng bản trong XAMPP hiện tại:
 
 ```powershell
 cd C:\Xampp\htdocs\techmart-web
@@ -168,9 +171,11 @@ password123
 | `customer1@techmart.test` | Customer |
 | `customer2@techmart.test` | Customer |
 
+Ghi chú: trên domain demo hiện tại admin có thể đã được đổi mật khẩu sang `password124`.
+
 ## Cấu hình email
 
-Mặc định local nên dùng chế độ log để demo ổn định:
+Local nên dùng chế độ log để demo ổn định:
 
 ```env
 MAIL_DRIVER=log
@@ -198,16 +203,6 @@ MAIL_PASSWORD=your-smtp-password
 MAIL_TIMEOUT=15
 ```
 
-Ví dụ Gmail:
-
-```env
-MAIL_HOST=smtp.gmail.com
-MAIL_PORT=587
-MAIL_ENCRYPTION=tls
-MAIL_USERNAME=your-gmail@gmail.com
-MAIL_PASSWORD=your-google-app-password
-```
-
 Các luồng email hiện có:
 
 - Xác thực email sau đăng ký.
@@ -224,16 +219,18 @@ Checkout hỗ trợ:
 - Chuyển khoản ngân hàng.
 - Ví điện tử.
 
-Các đơn chuyển khoản/ví điện tử có mã tham chiếu dạng `TMYYYYMMDDXXXXXX`.
+Đơn chuyển khoản/ví điện tử có mã tham chiếu dạng `TMYYYYMMDDXXXXXX`.
 
 Nếu muốn hiển thị QR VietQR, cấu hình trong `.env`:
 
 ```env
-PAYMENT_BANK_ID=970422
-PAYMENT_BANK_ACCOUNT_NO=123456789
-PAYMENT_BANK_ACCOUNT_NAME=TECHMART
+PAYMENT_BANK_ID=MB
+PAYMENT_BANK_ACCOUNT_NO=100612200517
+PAYMENT_BANK_ACCOUNT_NAME=TRAN QUOC HUY
 PAYMENT_BANK_NAME=MB Bank
 ```
+
+QR được render theo tổng tiền checkout và mã thanh toán của từng đơn.
 
 ## Kiểm thử nhanh
 
@@ -251,14 +248,13 @@ Các URL nên smoke test:
 http://localhost/techmart-web/
 http://localhost/techmart-web/products
 http://localhost/techmart-web/products/13
-http://localhost/techmart-web/compare?ids=13,1
 http://localhost/techmart-web/cart
+http://localhost/techmart-web/checkout
 http://localhost/techmart-web/login
 http://localhost/techmart-web/register
 http://localhost/techmart-web/profile
 http://localhost/techmart-web/my-wishlist
 http://localhost/techmart-web/my-orders
-http://localhost/techmart-web/checkout
 http://localhost/techmart-web/admin
 http://localhost/techmart-web/admin/products
 http://localhost/techmart-web/admin/orders
@@ -289,19 +285,18 @@ http://localhost/techmart-web/admin/logs
 - Namespace theo cấu trúc `App\Core`, `App\Controllers`, `App\Controllers\Admin`, `App\Models`, `App\Services`.
 - Controller kế thừa `App\Core\Controller` khi dùng helper render/json/redirect nội bộ.
 - Model kế thừa `App\Core\Model`, khai báo `$table` và `$fillable`.
-- Mọi form POST cần có `<?= csrf_field() ?>`.
-- Mọi output từ dữ liệu động cần dùng `e($value)`.
+- Mỗi form POST cần có `<?= csrf_field() ?>`.
+- Mỗi output từ dữ liệu động cần dùng `e($value)`.
 - View dùng PHP thuần, không dùng Blade/Twig.
 - UI dùng Bootstrap 5 và CSS trong `public/assets/css/app.css`.
 
-## Deploy
-
-### InfinityFree hoặc shared hosting
+## Deploy InfinityFree hoặc shared hosting
 
 1. Tạo database trên hosting.
 2. Import `database/schema.sql` và `database/seed.sql`.
-3. Upload source lên `htdocs` hoặc thư mục public tương ứng.
-4. Tạo `.env` production:
+3. Upload source lên `htdocs`.
+4. Nếu hosting đặt document root ở `htdocs`, có thể upload cả project vào `htdocs`; file `.htaccess` root sẽ chuyển request vào `public/`.
+5. Tạo `.env` production:
 
 ```env
 APP_ENV=production
@@ -313,9 +308,8 @@ DB_USER=...
 DB_PASS=...
 ```
 
-5. Đảm bảo Apache rewrite hoạt động.
 6. Bật SSL/HTTPS.
-7. Kiểm tra lại các route chính và quyền ghi cho `storage/logs`, `storage/mail`, `public/assets/uploads` nếu hosting cho phép upload.
+7. Kiểm tra quyền ghi cho `storage/logs`, `storage/mail`, `public/assets/uploads` nếu hosting cho phép upload.
 
 ## GitHub
 
@@ -337,7 +331,7 @@ git push
 
 - Đây là dự án học tập, không phải hệ thống thương mại điện tử production.
 - Không commit `.env`, log, file mail sinh tự động hoặc dữ liệu nhạy cảm.
-- Các tính năng thanh toán hiện là hướng dẫn thanh toán thủ công, chưa tích hợp cổng VNPay/Momo thật.
+- Thanh toán hiện là hướng dẫn thanh toán thủ công, chưa tích hợp cổng VNPay/Momo thật.
 
 ## License
 

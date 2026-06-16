@@ -26,3 +26,4 @@ composer.lock
 *.log
 *.cache
 -b
+work/

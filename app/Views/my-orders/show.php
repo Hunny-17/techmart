@@ -28,24 +28,35 @@ $paymentStatusLabels = [
     'paid'            => 'Đã thanh toán',
     'refunded'        => 'Đã hoàn tiền',
 ];
-$paymentConfig      = \App\Core\App::$config['payment'] ?? [];
-$paymentQrUrl       = '';
+$paymentConfig       = \App\Core\App::$config['payment'] ?? [];
+$paymentQrUrl        = '';
 $paymentReceiverText = '';
-if (!empty($order['payment_reference_code']) && $order['payment_method'] === 'bank_transfer') {
-    $paymentReceiverText = trim(($paymentConfig['bank_name'] ?? '') . ' · STK: ' . ($paymentConfig['bank_account_no'] ?? '') . ' · Chủ TK: ' . ($paymentConfig['bank_account_name'] ?? ''));
-    if (!empty($paymentConfig['bank_id']) && !empty($paymentConfig['bank_account_no'])) {
-        $paymentQrUrl = sprintf(
-            'https://img.vietqr.io/image/%s-%s-compact2.png?amount=%d&addInfo=%s&accountName=%s',
-            rawurlencode((string)$paymentConfig['bank_id']),
-            rawurlencode((string)$paymentConfig['bank_account_no']),
-            (int)round((float)$order['total_amount']),
-            rawurlencode((string)$order['payment_reference_code']),
-            rawurlencode((string)$paymentConfig['bank_account_name'])
-        );
+$bankReceiverText    = trim(($paymentConfig['bank_name'] ?? '') . ' · STK: ' . ($paymentConfig['bank_account_no'] ?? '') . ' · Chủ TK: ' . ($paymentConfig['bank_account_name'] ?? ''));
+$bankQrUrlForOrder   = static function (array $order, array $paymentConfig): string {
+    if (empty($order['payment_reference_code']) || empty($paymentConfig['bank_id']) || empty($paymentConfig['bank_account_no'])) {
+        return '';
     }
+
+    return sprintf(
+        'https://img.vietqr.io/image/%s-%s-compact2.png?amount=%d&addInfo=%s&accountName=%s',
+        rawurlencode((string)$paymentConfig['bank_id']),
+        rawurlencode((string)$paymentConfig['bank_account_no']),
+        (int)round((float)$order['total_amount']),
+        rawurlencode((string)$order['payment_reference_code']),
+        rawurlencode((string)$paymentConfig['bank_account_name'])
+    );
+};
+
+if (!empty($order['payment_reference_code']) && $order['payment_method'] === 'bank_transfer') {
+    $paymentReceiverText = $bankReceiverText;
+    $paymentQrUrl        = $bankQrUrlForOrder($order, $paymentConfig);
 } elseif (!empty($order['payment_reference_code']) && $order['payment_method'] === 'e_wallet') {
     $paymentReceiverText = trim(($paymentConfig['wallet_name'] ?? '') . ' · Tài khoản ví: ' . ($paymentConfig['wallet_account'] ?? ''));
     $paymentQrUrl        = (string)($paymentConfig['wallet_qr_url'] ?? '');
+    if ($paymentQrUrl === '') {
+        $paymentReceiverText = $bankReceiverText;
+        $paymentQrUrl        = $bankQrUrlForOrder($order, $paymentConfig);
+    }
 }
 $canCancel = $order['status'] === 'pending';
 ?>

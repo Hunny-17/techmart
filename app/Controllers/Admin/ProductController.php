@@ -64,6 +64,7 @@ final class ProductController extends Controller
             'description' => ['max:5000'],
             'status' => ['required', 'in:active,inactive'],
         ]);
+        $this->ensureCategoryExists((int)$data['category_id']);
         $this->validateVariants($_POST, (float)$data['price']);
 
         $imageUrl = $this->handleUpload($_FILES['image'] ?? null);
@@ -137,6 +138,7 @@ final class ProductController extends Controller
             'description' => ['max:5000'],
             'status' => ['required', 'in:active,inactive'],
         ]);
+        $this->ensureCategoryExists((int)$data['category_id']);
         $this->validateVariants($_POST, (float)$data['price']);
 
         $payload = [
@@ -266,6 +268,10 @@ final class ProductController extends Controller
             $this->redirect('/admin/products');
         }
 
+        if ($this->hasRemainingStock($existing, $id)) {
+            Flash::set('error', 'Sản phẩm còn tồn kho nên chưa thể xóa. Vui lòng xử lý hết tồn kho hoặc chuyển sản phẩm sang ngừng bán.');
+            $this->redirect('/admin/products');
+        }
         if ($product->hasOrderDetails($id)) {
             $product->deactivate($id);
             Flash::set('warning', 'Sản phẩm đã có lịch sử đơn hàng nên đã được chuyển sang ngừng bán thay vì xóa.');
@@ -282,6 +288,31 @@ final class ProductController extends Controller
     private function loadCategories(): array
     {
         return (new Category())->options();
+    }
+
+    private function hasRemainingStock(array $product, int $productId): bool
+    {
+        if ((int)($product['stock_quantity'] ?? 0) > 0) {
+            return true;
+        }
+
+        foreach ((new ProductVariant())->byProduct($productId) as $variant) {
+            if ((int)($variant['stock_quantity'] ?? 0) > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function ensureCategoryExists(int $categoryId): void
+    {
+        if ((new Category())->find($categoryId) !== null) {
+            return;
+        }
+
+        Flash::set('error', 'Danh mục sản phẩm không hợp lệ.');
+        $this->redirect($_SERVER['HTTP_REFERER'] ?? '/admin/products');
     }
 
     private function slugify(string $text): string

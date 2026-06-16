@@ -49,6 +49,10 @@ final class CategoryController extends Controller
         $category = new Category();
         $slug = $this->uniqueSlug($category, $this->slugify($data['name']));
         $parentId = $this->normalizeParentId($data['parent_id'] ?? null);
+        if ($parentId !== null && $category->find($parentId) === null) {
+            Flash::set('error', 'Danh mục cha không hợp lệ.');
+            $this->redirect('/admin/categories/create');
+        }
 
         $category->create([
             'name' => $data['name'],
@@ -93,8 +97,13 @@ final class CategoryController extends Controller
         ]);
 
         $parentId = $this->normalizeParentId($data['parent_id'] ?? null);
-        if ($parentId === $id) {
-            Flash::set('error', 'Danh mục không thể là cha của chính nó.');
+        if ($parentId !== null && $category->find($parentId) === null) {
+            Flash::set('error', 'Danh mục cha không hợp lệ.');
+            $this->redirect('/admin/categories/' . $id . '/edit');
+        }
+
+        if ($category->wouldCreateParentCycle($id, $parentId)) {
+            Flash::set('error', 'Danh mục cha không hợp lệ vì sẽ tạo vòng lặp danh mục.');
             $this->redirect('/admin/categories/' . $id . '/edit');
         }
 

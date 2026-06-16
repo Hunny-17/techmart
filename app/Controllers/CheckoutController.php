@@ -32,6 +32,7 @@ final class CheckoutController extends Controller
             'total'                => $subtotal,
             'user'                 => Auth::user(),
             'paymentReferenceCode' => $this->paymentReferenceCode(),
+            'availableVouchers'    => (new Voucher())->availableForCustomer((float)$subtotal),
         ]);
     }
 
