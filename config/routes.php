@@ -67,7 +67,7 @@ $router->get('/wishlist/count',   [WishlistController::class, 'count']); // AJAX
 $router->post('/wishlist/toggle', [WishlistController::class, 'toggle']); // AJAX
 
 // Voucher
-$router->get('/voucher/validate', [VoucherController::class, 'validate']); // AJAX
+$router->get('/voucher/validate', [VoucherController::class, 'check']); // AJAX
 
 // Checkout + don hang cua khach
 $router->get('/checkout',       [CheckoutController::class, 'index'],      'auth');

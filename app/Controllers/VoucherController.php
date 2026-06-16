@@ -9,7 +9,7 @@ use App\Models\Voucher;
 final class VoucherController extends Controller
 {
     /** GET /voucher/validate?code=...&total=... */
-    public function validate(): void
+    public function check(): void
     {
         $code  = strtoupper(trim($_GET['code'] ?? ''));
         $total = max(0.0, (float)($_GET['total'] ?? 0));
