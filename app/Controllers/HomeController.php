@@ -26,6 +26,7 @@ final class HomeController extends Controller
         $this->view('home/index', [
             'title'          => 'Trang chủ',
             'featured'       => $product->featured(8),
+            'newArrivals'    => $product->newArrivals(4),
             'categories'     => array_slice((new Category())->options(), 0, 6),
             'wishlistedIds'  => $wishlistedIds,
             'recentProducts' => $recentProducts,

@@ -3054,3 +3054,69 @@ td.text-muted,
         font-size: 2rem;
     }
 }
+/* Home new arrivals and stock signals */
+.home-new-arrivals {
+    position: relative;
+}
+
+.product-card-low-stock-badge {
+    background: #F59E0B;
+    border-radius: 999px;
+    box-shadow: 0 8px 18px rgba(245, 158, 11, 0.22);
+    color: #111827;
+    font-size: 0.72rem;
+    font-weight: 800;
+    left: 10px;
+    letter-spacing: 0;
+    padding: 0.28rem 0.62rem;
+    position: absolute;
+    text-transform: uppercase;
+    top: 46px;
+    z-index: 2;
+}
+
+.product-card-new-badge + .product-card-low-stock-badge {
+    top: 46px;
+}
+
+.tech-home-hero-low-stock {
+    background: #F59E0B !important;
+    color: #111827 !important;
+}
+
+.home-new-arrivals .home-page-product-card .home-product-media {
+    aspect-ratio: auto;
+    flex: 0 0 280px;
+    height: 280px;
+    min-height: 280px;
+}
+
+.home-new-arrivals .home-page-product-card .home-product-body {
+    min-height: 206px;
+}
+
+@media (max-width: 991.98px) {
+    .home-new-arrivals .home-page-product-card .home-product-media {
+        flex-basis: 220px;
+        height: 220px;
+        min-height: 220px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .home-new-arrivals .home-page-product-card .home-product-media {
+        flex-basis: 160px;
+        height: 160px;
+        min-height: 160px;
+        padding: 0.75rem;
+    }
+
+    .home-new-arrivals .home-page-product-card .home-product-body {
+        min-height: 218px;
+    }
+
+    .product-card-low-stock-badge {
+        font-size: 0.68rem;
+        top: 42px;
+    }
+}

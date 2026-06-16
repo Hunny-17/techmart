@@ -2,9 +2,11 @@
 /**
  * @var array $featured
  * @var array $categories
+ * @var array $newArrivals
  */
 $featured = $featured ?? [];
 $categories = $categories ?? [];
+$newArrivals = $newArrivals ?? [];
 $heroProduct = $featured[0] ?? null;
 $heroImage = $heroProduct['image_url'] ?? 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80';
 $heroSlides = array_slice($featured, 0, 5);
@@ -15,6 +17,53 @@ $isNewProduct = static function (array $product): bool {
 
     $createdAt = strtotime((string)$product['created_at']);
     return $createdAt !== false && $createdAt >= strtotime('-14 days');
+};
+$homeStockBadge = static function (array $product): string {
+    $stock = (int)($product['stock_quantity'] ?? 0);
+    if ($stock <= 0) {
+        return '<span class="badge text-bg-danger">Hết hàng</span>';
+    }
+    if ($stock <= 5) {
+        return '<span class="badge text-bg-warning text-dark border">Còn ít ' . number_format($stock) . '</span>';
+    }
+
+    return '<span class="badge text-bg-light border">Còn ' . number_format($stock) . '</span>';
+};
+$homeProductCard = static function (array $product, array $wishlistedIds, callable $isNewProduct, callable $stockBadge): void {
+    $stock = (int)($product['stock_quantity'] ?? 0);
+    $isWishlisted = in_array((int)$product['id'], $wishlistedIds, true);
+    ?>
+    <article class="home-product-card home-page-product-card">
+        <a href="<?= url('/products/' . $product['id']) ?>" class="home-product-media">
+            <img src="<?= e($product['image_url'] ?: 'https://placehold.co/360x280?text=No+Image') ?>" alt="<?= e($product['name']) ?>">
+            <?php if ($isNewProduct($product)): ?>
+                <span class="product-card-new-badge">Mới</span>
+            <?php endif; ?>
+            <?php if ($stock > 0 && $stock <= 5): ?>
+                <span class="product-card-low-stock-badge">Còn ít</span>
+            <?php endif; ?>
+            <?php if ($stock <= 0): ?>
+                <span class="product-card-sold-out">Hết hàng</span>
+            <?php endif; ?>
+        </a>
+        <button type="button"
+                class="wishlist-btn wishlist-btn--card <?= $isWishlisted ? 'active' : '' ?>"
+                data-product-id="<?= e($product['id']) ?>"
+                title="<?= $isWishlisted ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích' ?>">
+            <i class="bi <?= $isWishlisted ? 'bi-heart-fill' : 'bi-heart' ?>"></i>
+        </button>
+        <div class="home-product-body">
+            <a href="<?= url('/products/' . $product['id']) ?>" class="home-product-name"><?= e($product['name']) ?></a>
+            <div class="home-product-meta">
+                <span class="home-product-price"><?= format_vnd((float)$product['price']) ?></span>
+                <?= $stockBadge($product) ?>
+            </div>
+            <a href="<?= url('/products/' . $product['id']) ?>" class="btn btn-sm btn-outline-primary w-100">
+                Xem chi tiết
+            </a>
+        </div>
+    </article>
+    <?php
 };
 $categoryIcons = [
     'laptop' => 'bi-laptop',
@@ -61,6 +110,9 @@ $categoryIcons = [
                         <?php if ($isNewProduct($slide)): ?>
                             <em>Mới về</em>
                         <?php endif; ?>
+                        <?php if ((int)$slide['stock_quantity'] > 0 && (int)$slide['stock_quantity'] <= 5): ?>
+                            <em class="tech-home-hero-low-stock">Còn ít</em>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -69,7 +121,10 @@ $categoryIcons = [
                     <div class="tech-hero-product-note">
                         <span><?= $isNewProduct($slide) ? 'Mới tại TechMart' : 'Đang được chú ý' ?></span>
                         <strong><?= e($slide['name']) ?></strong>
-                        <small><?= format_vnd((float)$slide['price']) ?></small>
+                        <small>
+                            <?= format_vnd((float)$slide['price']) ?> ·
+                            <?= (int)$slide['stock_quantity'] > 0 ? 'Còn ' . number_format((int)$slide['stock_quantity']) : 'Hết hàng' ?>
+                        </small>
                     </div>
                 </div>
             </article>
@@ -97,6 +152,7 @@ $categoryIcons = [
     </div>
 </section>
 <?php endif; ?>
+
 <section class="home-service-strip mb-4" aria-label="TechMart service highlights">
     <div>
         <i class="bi bi-patch-check"></i>
@@ -148,6 +204,25 @@ $categoryIcons = [
     </section>
 <?php endif; ?>
 
+<?php if (!empty($newArrivals)): ?>
+<section class="home-new-arrivals mb-5">
+    <div class="section-heading">
+        <div>
+            <h2>Sản phẩm mới về</h2>
+            <p>Các lựa chọn vừa được cập nhật tại TechMart.</p>
+        </div>
+        <a href="<?= url('/products?sort=newest') ?>" class="btn btn-outline-primary btn-sm">Xem tất cả</a>
+    </div>
+    <div class="row g-3">
+        <?php foreach ($newArrivals as $p): ?>
+            <div class="col-6 col-md-4 col-xl-3">
+                <?php $homeProductCard($p, $wishlistedIds ?? [], $isNewProduct, $homeStockBadge); ?>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</section>
+<?php endif; ?>
+
 <section class="home-featured-products">
     <div class="section-heading">
         <div>
@@ -163,34 +238,7 @@ $categoryIcons = [
         <div class="row g-3">
             <?php foreach ($featured as $p): ?>
                 <div class="col-6 col-md-4 col-xl-3">
-                    <article class="home-product-card home-page-product-card">
-                        <a href="<?= url('/products/' . $p['id']) ?>" class="home-product-media">
-                            <img src="<?= e($p['image_url'] ?: 'https://placehold.co/360x280?text=No+Image') ?>" alt="<?= e($p['name']) ?>">
-                            <?php if ($isNewProduct($p)): ?>
-                                <span class="product-card-new-badge">Mới</span>
-                            <?php endif; ?>
-                            <?php if ((int)$p['stock_quantity'] <= 0): ?>
-                                <span class="product-card-sold-out">Hết hàng</span>
-                            <?php endif; ?>
-                        </a>
-                        <?php $isWishlisted = in_array((int)$p['id'], $wishlistedIds ?? [], true); ?>
-                        <button type="button"
-                                class="wishlist-btn wishlist-btn--card <?= $isWishlisted ? 'active' : '' ?>"
-                                data-product-id="<?= e($p['id']) ?>"
-                                title="<?= $isWishlisted ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích' ?>">
-                            <i class="bi <?= $isWishlisted ? 'bi-heart-fill' : 'bi-heart' ?>"></i>
-                        </button>
-                        <div class="home-product-body">
-                            <a href="<?= url('/products/' . $p['id']) ?>" class="home-product-name"><?= e($p['name']) ?></a>
-                            <div class="home-product-meta">
-                                <span class="home-product-price"><?= format_vnd((float)$p['price']) ?></span>
-                                <span class="badge text-bg-light border">Còn <?= number_format((int)$p['stock_quantity']) ?></span>
-                            </div>
-                            <a href="<?= url('/products/' . $p['id']) ?>" class="btn btn-sm btn-outline-primary w-100">
-                                Xem chi tiết
-                            </a>
-                        </div>
-                    </article>
+                    <?php $homeProductCard($p, $wishlistedIds ?? [], $isNewProduct, $homeStockBadge); ?>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -207,36 +255,8 @@ $categoryIcons = [
     </div>
     <div class="row g-3">
         <?php foreach ($recentProducts as $r): ?>
-            <?php $isWishlisted = in_array((int)$r['id'], $wishlistedIds ?? [], true); ?>
             <div class="col-6 col-md-4 col-xl-3">
-                <article class="home-product-card home-page-product-card">
-                    <a href="<?= url('/products/' . $r['id']) ?>" class="home-product-media">
-                        <img src="<?= e($r['image_url'] ?: 'https://placehold.co/360x280?text=No+Image') ?>"
-                             alt="<?= e($r['name']) ?>">
-                        <?php if ($isNewProduct($r)): ?>
-                            <span class="product-card-new-badge">Mới</span>
-                        <?php endif; ?>
-                        <?php if ((int)$r['stock_quantity'] <= 0): ?>
-                            <span class="product-card-sold-out">Hết hàng</span>
-                        <?php endif; ?>
-                    </a>
-                    <button type="button"
-                            class="wishlist-btn wishlist-btn--card <?= $isWishlisted ? 'active' : '' ?>"
-                            data-product-id="<?= e($r['id']) ?>"
-                            title="<?= $isWishlisted ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích' ?>">
-                        <i class="bi <?= $isWishlisted ? 'bi-heart-fill' : 'bi-heart' ?>"></i>
-                    </button>
-                    <div class="home-product-body">
-                        <a href="<?= url('/products/' . $r['id']) ?>" class="home-product-name"><?= e($r['name']) ?></a>
-                        <div class="home-product-meta">
-                            <span class="home-product-price"><?= format_vnd((float)$r['price']) ?></span>
-                            <span class="badge text-bg-light border">Còn <?= number_format((int)$r['stock_quantity']) ?></span>
-                        </div>
-                        <a href="<?= url('/products/' . $r['id']) ?>" class="btn btn-sm btn-outline-primary w-100">
-                            Xem chi tiết
-                        </a>
-                    </div>
-                </article>
+                <?php $homeProductCard($r, $wishlistedIds ?? [], $isNewProduct, $homeStockBadge); ?>
             </div>
         <?php endforeach; ?>
     </div>

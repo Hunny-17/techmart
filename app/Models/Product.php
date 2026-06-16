@@ -52,6 +52,20 @@ final class Product extends Model
         return $stmt->fetchAll();
     }
 
+    public function newArrivals(int $limit = 4): array
+    {
+        $limit = max(1, min(12, $limit));
+        $stmt = $this->db()->prepare("
+            SELECT *
+            FROM products
+            WHERE status = 'active'
+            ORDER BY created_at DESC, id DESC
+            LIMIT $limit
+        ");
+        $stmt->execute();
+
+        return $stmt->fetchAll();
+    }
     /** @return array<int,array{id:int,name:string,price:float,image_url:string}> */
     public function suggest(string $keyword, int $limit = 6): array
     {
