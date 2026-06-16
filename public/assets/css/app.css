@@ -1024,6 +1024,7 @@ aside.bg-white {
     flex: 1;
     flex-direction: column;
     gap: 0.75rem;
+    min-height: 214px;
     padding: 1rem;
 }
 
@@ -1049,6 +1050,7 @@ aside.bg-white {
     gap: 0.5rem;
     justify-content: space-between;
     flex-wrap: wrap;
+    min-height: 2rem;
 }
 
 .home-product-price {
@@ -1064,6 +1066,14 @@ aside.bg-white {
     max-width: 100%;
     text-align: center;
     white-space: normal;
+}
+
+.home-product-body > .btn:first-of-type {
+    margin-top: auto;
+}
+
+.home-product-body .compare-btn {
+    margin-top: 0 !important;
 }
 
 /* Shared hero base — layout only; per-page classes add background */
@@ -2358,6 +2368,46 @@ td.text-muted,
 
     .catalog-product-card .home-product-media {
         min-height: 140px;
+    }
+
+    .catalog-product-card .home-product-body,
+    .wishlist-product-card .home-product-body {
+        min-height: 226px;
+        padding: 0.9rem;
+    }
+
+    .catalog-product-card .home-product-name,
+    .wishlist-product-card .home-product-name {
+        font-size: 0.95rem;
+        overflow-wrap: anywhere;
+    }
+
+    .catalog-product-card .home-product-price,
+    .wishlist-product-card .home-product-price {
+        font-size: 1rem;
+    }
+
+    .catalog-product-card .btn,
+    .wishlist-product-card .btn {
+        min-height: 34px;
+        min-width: 0;
+        padding-left: 0.45rem;
+        padding-right: 0.45rem;
+        white-space: nowrap;
+    }
+
+    .catalog-product-card .home-product-meta,
+    .wishlist-product-card .home-product-meta {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.35rem;
+        min-height: 3.5rem;
+    }
+
+    .catalog-product-card .home-product-price,
+    .wishlist-product-card .home-product-price {
+        flex: 0 0 auto;
+        width: 100%;
     }
 
     .checkout-payment-guide {
