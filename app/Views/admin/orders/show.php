@@ -168,6 +168,13 @@ $paymentHint = $isCodPayment
                             <?= e($requiresPaidBeforeConfirm ? 'Cần xác nhận thanh toán đã paid trước khi duyệt đơn chuyển khoản/ví điện tử.' : ($statusHints[$order['status']] ?? '')) ?>
                         </div>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="cancel_reason">Lý do hủy</label>
+                        <textarea name="cancel_reason" id="cancel_reason" class="form-control" rows="2"
+                                  maxlength="500"
+                                  placeholder="Bắt buộc khi chuyển trạng thái sang đã hủy"></textarea>
+                        <div class="form-text">Ghi rõ lý do nếu hủy đơn hoặc hoàn tiền cho khách.</div>
+                    </div>
                     <button class="btn btn-primary w-100" <?= $isTerminalStatus ? 'disabled' : '' ?>>
                         <i class="bi bi-check2-circle"></i> Lưu trạng thái
                     </button>
@@ -194,6 +201,12 @@ $paymentHint = $isCodPayment
                             <?php endforeach; ?>
                         </select>
                         <div class="form-text"><?= e($paymentHint) ?></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="payment_reason">Lý do hoàn tiền</label>
+                        <textarea name="payment_reason" id="payment_reason" class="form-control" rows="2"
+                                  maxlength="500"
+                                  placeholder="Bắt buộc khi chuyển thanh toán sang đã hoàn tiền"></textarea>
                     </div>
                     <button class="btn btn-outline-primary w-100">
                         <i class="bi bi-wallet2"></i> Lưu thanh toán

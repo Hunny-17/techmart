@@ -260,10 +260,20 @@ final class OrderController extends Controller
         }
 
         if ($data['status'] === 'cancelled' && $order['status'] !== 'cancelled') {
+            $cancelReason = trim((string)($_POST['cancel_reason'] ?? ''));
+            if ($cancelReason === '') {
+                Flash::set('error', 'Vui lòng nhập lý do hủy đơn.');
+                $this->redirect('/admin/orders/' . $id);
+            }
+            if (mb_strlen($cancelReason) > 500) {
+                Flash::set('error', 'Lý do hủy đơn tối đa 500 ký tự.');
+                $this->redirect('/admin/orders/' . $id);
+            }
+
             $shouldMarkRefunded = in_array((string)($order['payment_method'] ?? ''), ['bank_transfer', 'e_wallet'], true)
                 && (string)($order['payment_status'] ?? 'unpaid') === 'paid';
 
-            $this->cancelOrderAndRestoreStock($id, $orderModel);
+            $this->cancelOrderAndRestoreStock($id, $orderModel, $cancelReason);
             if ($shouldMarkRefunded) {
                 $orderModel->changePaymentStatus($id, 'refunded');
                 (new AdminLogger())->log('change_payment_status', 'order', $id, "Tự động chuyển thanh toán đơn #{$id} sang refunded khi hủy đơn đã paid");
@@ -321,7 +331,22 @@ final class OrderController extends Controller
             $this->redirect('/admin/orders/' . $id);
         }
 
+        $paymentReason = trim((string)($_POST['payment_reason'] ?? ''));
+        if ($data['payment_status'] === 'refunded') {
+            if ($paymentReason === '') {
+                Flash::set('error', 'Vui lòng nhập lý do hoàn tiền.');
+                $this->redirect('/admin/orders/' . $id);
+            }
+            if (mb_strlen($paymentReason) > 500) {
+                Flash::set('error', 'Lý do hoàn tiền tối đa 500 ký tự.');
+                $this->redirect('/admin/orders/' . $id);
+            }
+        }
+
         $orderModel->changePaymentStatus($id, $data['payment_status']);
+        if ($data['payment_status'] === 'refunded') {
+            $this->appendOrderNote($id, 'Admin hoàn tiền', $paymentReason);
+        }
         if (($order['payment_status'] ?? 'unpaid') !== 'paid' && $data['payment_status'] === 'paid') {
             $this->notifyCustomerPaymentPaid($id);
         }
@@ -335,7 +360,7 @@ final class OrderController extends Controller
         $this->redirect('/admin/orders/' . $id);
     }
 
-    private function cancelOrderAndRestoreStock(int $id, Order $orderModel): void
+    private function cancelOrderAndRestoreStock(int $id, Order $orderModel, ?string $cancelReason = null): void
     {
         $db = Database::pdo();
         try {
@@ -365,6 +390,10 @@ final class OrderController extends Controller
                 (new Voucher())->decrementUsed((int)$order['voucher_id']);
             }
 
+            if ($cancelReason !== null && $cancelReason !== '') {
+                $this->appendOrderNote($id, 'Admin hủy đơn', $cancelReason);
+            }
+
             $orderModel->changeStatus($id, 'cancelled');
             $db->commit();
         } catch (\Throwable $e) {
@@ -376,6 +405,20 @@ final class OrderController extends Controller
         }
     }
 
+
+    private function appendOrderNote(int $id, string $label, string $message): void
+    {
+        $entry = '[' . date('d/m/Y H:i') . '] ' . $label . ': ' . trim($message);
+        $stmt = Database::pdo()->prepare("
+            UPDATE orders
+            SET note = CASE
+                WHEN note IS NULL OR note = '' THEN ?
+                ELSE CONCAT(note, CHAR(10), CHAR(10), ?)
+            END
+            WHERE id = ?
+        ");
+        $stmt->execute([$entry, $entry, $id]);
+    }
     private function canChangeStatus(array $order, string $next): bool
     {
         $current = (string)$order['status'];

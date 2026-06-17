@@ -125,6 +125,11 @@ final class MyOrderController extends Controller
             $this->redirect('/my-orders/' . $id);
         }
 
+        if ((string)($order['payment_status'] ?? 'unpaid') === 'paid') {
+            Flash::set('error', 'Đơn đã thanh toán cần liên hệ shop để được hỗ trợ hủy/hoàn tiền.');
+            $this->redirect('/my-orders/' . $id);
+        }
+
         $db = Database::pdo();
         try {
             $db->beginTransaction();
