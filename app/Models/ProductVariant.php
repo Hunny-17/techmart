@@ -23,6 +23,14 @@ final class ProductVariant extends Model
         return $this->where(['product_id' => $productId], 'id ASC');
     }
 
+    public function hasActiveForProduct(int $productId): bool
+    {
+        $stmt = $this->db()->prepare("SELECT 1 FROM product_variants WHERE product_id = ? AND status = 'active' LIMIT 1");
+        $stmt->execute([$productId]);
+
+        return (bool)$stmt->fetchColumn();
+    }
+
     public function findForProduct(int $id, int $productId): ?array
     {
         $stmt = $this->db()->prepare("

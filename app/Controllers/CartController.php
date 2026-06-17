@@ -39,7 +39,13 @@ final class CartController extends Controller
             $this->redirect('/products');
         }
 
-        $variant = $variantId > 0 ? (new ProductVariant())->findForProduct($variantId, $id) : null;
+        $variantModel = new ProductVariant();
+        if ($variantId <= 0 && $variantModel->hasActiveForProduct($id)) {
+            Flash::set('error', 'Vui lòng chọn mẫu sản phẩm trước khi thêm vào giỏ hàng.');
+            $this->redirect('/products/' . $id);
+        }
+
+        $variant = $variantId > 0 ? $variantModel->findForProduct($variantId, $id) : null;
         if ($variantId > 0 && ($variant === null || $variant['status'] !== 'active')) {
             Flash::set('error', 'Mẫu sản phẩm không hợp lệ.');
             $this->redirect('/products/' . $id);

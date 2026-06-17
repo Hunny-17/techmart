@@ -12,6 +12,7 @@ use App\Core\Session;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\OrderEmailLog;
+use App\Models\ProductVariant;
 use App\Models\Voucher;
 use App\Services\OrderCustomerNotifier;
 
@@ -19,7 +20,13 @@ final class CheckoutController extends Controller
 {
     public function index(): void
     {
-        $items = $this->buildItems(Session::get('cart', []));
+        try {
+            $items = $this->buildItemsForCheckout(Session::get('cart', []));
+        } catch (\RuntimeException $e) {
+            Flash::set('error', $e->getMessage());
+            $this->redirect('/cart');
+        }
+
         if ($items === []) {
             Flash::set('error', 'Giỏ hàng đang trống.');
             $this->redirect('/cart');
@@ -245,7 +252,13 @@ final class CheckoutController extends Controller
     private function buildItemsForCheckout(array $cart): array
     {
         $items = $this->buildItems($cart);
+        $variantModel = new ProductVariant();
+
         foreach ($items as $item) {
+            if ($item['variant_id'] === null && $variantModel->hasActiveForProduct((int)$item['id'])) {
+                throw new \RuntimeException('Vui lòng chọn mẫu cho sản phẩm "' . $item['name'] . '" trước khi thanh toán.');
+            }
+
             if ($item['quantity'] > $item['stock_quantity']) {
                 $name = $item['variant_name'] ?: $item['name'];
                 throw new \RuntimeException('Sản phẩm "' . $name . '" không đủ tồn kho.');

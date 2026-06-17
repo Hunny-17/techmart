@@ -85,6 +85,11 @@ final class MyOrderController extends Controller
             }
 
             $stock = (int)$product['stock_quantity'];
+            if ($variantId === 0 && $variantModel->hasActiveForProduct($productId)) {
+                Flash::set('error', 'Một sản phẩm trong đơn cũ hiện cần chọn mẫu trước khi mua lại.');
+                $this->redirect('/products/' . $productId);
+            }
+
             if ($variantId > 0) {
                 $variant = $variantModel->findForProduct($variantId, $productId);
                 if ($variant === null || ($variant['status'] ?? '') !== 'active') {

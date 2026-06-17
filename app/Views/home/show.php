@@ -134,6 +134,11 @@ if ((int)$product['id'] === 13 && str_contains((string)$product['description'], 
                 <?= csrf_field() ?>
                 <input type="hidden" name="product_id" value="<?= e($product['id']) ?>">
                 <input type="hidden" name="variant_id" id="variant_id" value="">
+                <?php if (!empty($variantData)): ?>
+                    <div id="variant-required-message" class="w-100 small text-danger fw-semibold">
+                        Vui lòng chọn mẫu sản phẩm trước khi thêm vào giỏ.
+                    </div>
+                <?php endif; ?>
 
                 <label class="me-2">Số lượng:</label>
                 <input type="number" name="quantity" id="quantity" value="1" min="1"
@@ -336,12 +341,15 @@ $averageRating = $reviewCount > 0
     const defaultImage = <?= json_encode($mainImage, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
     const defaultPrice = <?= json_encode((float)$product['price']) ?>;
     const totalStock = <?= json_encode((int)$product['stock_quantity']) ?>;
+    const requiresVariant = <?= !empty($variantData) ? 'true' : 'false' ?>;
     const mainImage = document.getElementById('product-main-image');
     const priceEl = document.getElementById('product-price');
     const stockEl = document.getElementById('product-stock');
     const variantInput = document.getElementById('variant_id');
     const quantityInput = document.getElementById('quantity');
     const addButton = document.getElementById('add-to-cart-button');
+    const variantRequiredMessage = document.getElementById('variant-required-message');
+    const cartForm = addButton?.closest('form');
     const thumbs = Array.from(document.querySelectorAll('.product-thumb'));
     const variants = Array.from(document.querySelectorAll('.variant-option'));
     const formatVnd = value => new Intl.NumberFormat('vi-VN').format(Number(value || 0)) + 'đ';
@@ -425,11 +433,15 @@ $averageRating = $reviewCount > 0
                 priceEl.textContent = formatVnd(button.dataset.price || defaultPrice);
             }
             if (quantityInput) {
+                quantityInput.disabled = variantStock <= 0;
                 quantityInput.max = String(variantStock);
                 quantityInput.value = variantStock > 0 ? '1' : '0';
             }
             if (addButton) {
                 addButton.disabled = variantStock <= 0;
+            }
+            if (variantRequiredMessage) {
+                variantRequiredMessage.classList.add('d-none');
             }
 
             pinnedGalleryImage = '';
@@ -447,11 +459,21 @@ $averageRating = $reviewCount > 0
         priceEl.textContent = formatVnd(defaultPrice);
     }
     if (quantityInput) {
-        quantityInput.max = String(totalStock);
-        quantityInput.value = totalStock > 0 ? '1' : '0';
+        quantityInput.disabled = requiresVariant || totalStock <= 0;
+        quantityInput.max = requiresVariant ? '0' : String(totalStock);
+        quantityInput.value = requiresVariant ? '0' : (totalStock > 0 ? '1' : '0');
     }
     if (addButton) {
-        addButton.disabled = totalStock <= 0;
+        addButton.disabled = requiresVariant || totalStock <= 0;
+    }
+    if (cartForm) {
+        cartForm.addEventListener('submit', event => {
+            if (requiresVariant && !variantInput?.value) {
+                event.preventDefault();
+                variantRequiredMessage?.classList.remove('d-none');
+                document.getElementById('variant-options')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
     }
     updateStockLabel(totalStock, false);
     resetImageToDefault();
