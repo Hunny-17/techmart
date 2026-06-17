@@ -260,9 +260,18 @@ final class OrderController extends Controller
         }
 
         if ($data['status'] === 'cancelled' && $order['status'] !== 'cancelled') {
+            $shouldMarkRefunded = in_array((string)($order['payment_method'] ?? ''), ['bank_transfer', 'e_wallet'], true)
+                && (string)($order['payment_status'] ?? 'unpaid') === 'paid';
+
             $this->cancelOrderAndRestoreStock($id, $orderModel);
+            if ($shouldMarkRefunded) {
+                $orderModel->changePaymentStatus($id, 'refunded');
+                (new AdminLogger())->log('change_payment_status', 'order', $id, "Tự động chuyển thanh toán đơn #{$id} sang refunded khi hủy đơn đã paid");
+            }
             $this->notifyCustomerStatusChange($id, 'cancelled');
-            Flash::set('success', 'Đã hủy đơn hàng và hoàn lại tồn kho.');
+            Flash::set('success', $shouldMarkRefunded
+                ? 'Đã hủy đơn hàng, hoàn lại tồn kho và chuyển thanh toán sang hoàn tiền.'
+                : 'Đã hủy đơn hàng và hoàn lại tồn kho.');
             (new AdminLogger())->log('change_status', 'order', $id, "Đổi trạng thái đơn #{$id}: {$order['status']} → cancelled");
             $this->redirect('/admin/orders/' . $id);
         }
@@ -402,19 +411,30 @@ final class OrderController extends Controller
             return true;
         }
 
+        $method = (string)($order['payment_method'] ?? 'cod');
+        $status = (string)($order['status'] ?? 'pending');
+
         if ($next === 'refunded') {
-            return $current === 'paid' || (string)$order['status'] === 'cancelled';
+            return $current === 'paid' && $status === 'cancelled';
         }
 
-        if ((string)$order['payment_method'] === 'cod' && $next === 'paid') {
-            return (string)$order['status'] === 'delivered';
-        }
-
-        if ((string)$order['status'] === 'cancelled') {
+        if (in_array($current, ['paid', 'refunded'], true)) {
             return false;
         }
 
-        return true;
+        if ($status === 'cancelled') {
+            return false;
+        }
+
+        if ($method === 'cod') {
+            return $next === 'paid' && $status === 'delivered';
+        }
+
+        if (in_array($method, ['bank_transfer', 'e_wallet'], true)) {
+            return in_array($next, ['awaiting_review', 'paid'], true);
+        }
+
+        return false;
     }
 
     private function notifyCustomerStatusChange(int $id, string $status): void
